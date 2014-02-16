@@ -6,7 +6,7 @@
 
 using namespace std;
 
-typedef GtkGui UIClass;
+typedef GtkGui::ApplicationRootWindow UIClass;
 
 
 int main(int argc, char** argv) {
