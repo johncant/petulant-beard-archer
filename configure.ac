@@ -7,8 +7,8 @@ AC_CONFIG_SRCDIR([src])
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE
 
-LT_INIT([dlopen])
-LT_CONFIG_LTDL_DIR([libltdl])
+#LT_INIT([dlopen])
+#LT_CONFIG_LTDL_DIR([libltdl])
 
 # Checks for programs.
 AC_PROG_CXX
@@ -28,5 +28,5 @@ AC_CHECK_HEADER_STDBOOL
 # Checks for library functions.
 
 AC_CONFIG_FILES([Makefile])
-LTDL_INIT([subproject])
+#LTDL_INIT([subproject])
 AC_OUTPUT
