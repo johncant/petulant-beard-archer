@@ -1,0 +1,17 @@
+.deps/
+.libs/
+.Makefile/
+Makefile
+Makefile.in
+autom4te.cache
+config.h
+config.log
+config.status
+configure
+libphotogrammetry.la
+photogrammetry
+src/.deps
+src/.dirstamp
+src/.libs
+*.o
+stamp-h1

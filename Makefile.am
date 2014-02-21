@@ -4,9 +4,10 @@ bin_PROGRAMS = photogrammetry
 #lib_LTLIBRARIES = libphotogrammetry.la
 photogrammetry_SOURCES = \
 												 src/main.cc \
-												 src/gtk_gui.cc \
-												 src/photogrammetry_window.cc \
-												 src/viewer.cc
+												 src/gtk_gui/gtk_gui.cc \
+												 src/gtk_gui/photogrammetry_window.cc \
+												 src/gtk_gui/viewer.cc \
+												 src/importers/insight3d.cc
 
 
 #libphotogrammetry_la_SOURCES = src/gtk_gui.cc

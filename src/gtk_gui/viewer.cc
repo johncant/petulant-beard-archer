@@ -1,4 +1,4 @@
-#include <src/viewer.h>
+#include "viewer.h"
 
 
 GtkGui::Viewer::~Viewer() {
