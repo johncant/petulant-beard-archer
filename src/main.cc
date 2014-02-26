@@ -26,7 +26,14 @@ int main(int argc, char** argv) {
   cout << s->images.size() << "images" << endl;
 
   cout << "START Images:" << endl;
-  for_each(s->images.begin(), s->images.end(), cout << bind(&Core::Image::path, *_1) << " " << bind(&std::vector<Core::Point2D>::size, bind(&Core::Image::points, *_1)) << endl);
+
+  for_each(s->images.begin(), s->images.end(), (
+    ref(cout) << bind(&Core::Image::path, *_1),
+    ref(cout) << " ",
+    ref(cout) << bind(&std::vector<Core::Point2D>::size, bind(&Core::Image::points, *_1)),
+    ref(cout) << endl
+  ));
+
   cout << "END Images" << endl;
 
   GtkGui::main(argc, argv);

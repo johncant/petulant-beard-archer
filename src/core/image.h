@@ -8,8 +8,9 @@
 namespace Core {
   class Image {
     public:
-    void add_point(Point2D const& pt) {
-      points.push_back(pt);
+    template <class point_class>
+    void add_point(point_class const& pt) {
+      points.push_back(Core::Point2D(pt));
     }
 
     std::string path;

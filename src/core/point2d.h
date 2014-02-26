@@ -8,6 +8,9 @@ namespace Core {
     double y;
     Point2D(double x_, double y_) : x(x_), y(y_) {
     }
+    template <class OtherPoint>
+    Point2D(const OtherPoint& other) : x(other.x), y(other.y) {
+    }
   };
 }
 
