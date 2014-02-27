@@ -3,8 +3,8 @@
 
 // Method called on GdkDrawable in 2.x and GdkWindow in 3.x
 #if !GTK_CHECK_VERSION(3,0,0)
-#error "Whoops"
-#define gdk_x11_window_get_xid(window) gdk_x11_drawable_get_xid(GDK_GRAWABLE(window))
+  #warning "Does opencv support GTK3 yet?"
+  #define gdk_x11_window_get_xid(window) gdk_x11_drawable_get_xid(GDK_DRAWABLE(window))
 #endif
 
 
@@ -100,8 +100,16 @@ bool GtkGui::Viewer::on_configure2(GdkEventConfigure* const&) {
 
 }
 
+// Compatability wrappers
+bool GtkGui::Viewer::on_expose_gtk2(GdkEventExpose* evt) {
+  return on_expose1();
+}
 
-bool GtkGui::Viewer::on_expose2(const Cairo::RefPtr<Cairo::Context>&) {
+bool GtkGui::Viewer::on_expose_gtk3(const Cairo::RefPtr<Cairo::Context>&) {
+  return on_expose1();
+}
+
+bool GtkGui::Viewer::on_expose1() {
   GdkWindow *window;
   Display *display;
   int id;

@@ -28,7 +28,9 @@ namespace GtkGui {
 
     void on_realize2();
     bool on_configure2(GdkEventConfigure* const&);
-    bool on_expose2(const Cairo::RefPtr<Cairo::Context>&);
+    bool on_expose_gtk3(const Cairo::RefPtr<Cairo::Context>&);
+    bool on_expose_gtk2(GdkEventExpose* evt);
+    bool on_expose1();
 
     private:
     GLXContext context;
