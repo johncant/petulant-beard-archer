@@ -24,21 +24,24 @@ using boost::spirit::qi::lit;
 using boost::spirit::qi::eol;
 using boost::spirit::qi::phrase_parse;
 using boost::spirit::qi::eps;
-using boost::spirit::repeat;
 using boost::spirit::as_string;
+using boost::spirit::repeat;
 namespace qi = boost::spirit::qi;
-using namespace boost::phoenix;
-using namespace boost::phoenix::local_names;
-using boost::shared_ptr;
-using boost::weak_ptr;
+
 using boost::spirit::locals;
-namespace phx = boost::phoenix;
 namespace local {
   using boost::spirit::_a;
   using boost::spirit::_b;
   using boost::spirit::_c;
   using boost::spirit::_d;
 }
+
+using namespace boost::phoenix;
+using namespace boost::phoenix::local_names;
+namespace phx = boost::phoenix;
+
+using boost::shared_ptr;
+using boost::weak_ptr;
 
 typedef boost::spirit::line_pos_iterator<boost::spirit::istream_iterator> iterator_type;
 
