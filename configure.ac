@@ -16,8 +16,9 @@ AC_PROG_CC
 AC_PROG_INSTALL
 
 # Checks for libraries.
-PKG_CHECK_MODULES(GTKMM, [gtkmm-3.0])
-PKG_CHECK_MODULES(gl, [gl])
+#PKG_CHECK_MODULES(GTKMM, [gtkmm-3.0])
+PKG_CHECK_MODULES(GTKMM, [gtkmm-2.4])
+PKG_CHECK_MODULES(gl, [gl]) # TODO - check version.
 
 # Checks for header files.
 AC_CHECK_HEADERS([stdlib.h])

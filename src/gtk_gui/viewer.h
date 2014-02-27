@@ -6,8 +6,11 @@
 #include <stdlib.h>
 #include <GL/gl.h>
 #include <GL/glx.h>
+#include <boost/shared_ptr.hpp>
+
 #include <gdk/gdkx.h>
 #include "gtk_gui.h"
+#include "renderer.h"
 
 namespace GtkGui {
   class Viewer : public Gtk::DrawingArea {
@@ -18,10 +21,6 @@ namespace GtkGui {
     // https://www.mail-archive.com/gtk-devel-list@gnome.org/msg16579.html
 
     public:
-    GLXContext context;
-    Colormap xcolormap;
-    XVisualInfo *xvisual;
-    GdkVisual *visual;
 
     ~Viewer();
     Viewer(GtkDrawingArea *gobj, Glib::RefPtr<Gtk::Builder> builder);
@@ -31,6 +30,12 @@ namespace GtkGui {
     bool on_configure2(GdkEventConfigure* const&);
     bool on_expose2(const Cairo::RefPtr<Cairo::Context>&);
 
+    private:
+    GLXContext context;
+    Colormap xcolormap;
+    XVisualInfo *xvisual;
+    GdkVisual *visual;
+    boost::shared_ptr<GtkGui::Renderer> renderer;
   };
 }
 

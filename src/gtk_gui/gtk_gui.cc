@@ -1,10 +1,18 @@
 #include "gtk_gui.h"
 #include <gtkmm/builder.h>
 
+using namespace std;
+
 namespace GtkGui {
   int main(int argc, char** argv) {
 
+    // This needs to exist or Gtk::Builder will grash
+    #if GTK_CHECK_VERSION(3,0,0)
     Glib::RefPtr<Gtk::Application> app = Gtk::Application::create("org.photogrammetry");
+    #else
+    Gtk::Main kit(argc, argv);
+    #endif
+
     Glib::RefPtr<Gtk::Builder> builder = Gtk::Builder::create_from_file("iface/window.glade");
 
     // Get the window to work
@@ -16,11 +24,21 @@ namespace GtkGui {
     GtkGui::Viewer *viewer = 0;
     builder->get_widget_derived("drawingarea_viewer", viewer);
 
-    viewer->signal_configure_event().connect(sigc::mem_fun(viewer, &Viewer::on_configure2));
+    // Signal gets renamed in Gtk+-3.0
+    #if GTK_CHECK_VERSION(3,0,0)
     viewer->signal_draw().connect(sigc::mem_fun(viewer, &Viewer::on_expose2));
+    #else
+    viewer->signal_expose().connect(sigc::mem_fun(viewer, &Viewer::on_expose2));
+    #endif
+    viewer->signal_configure_event().connect(sigc::mem_fun(viewer, &Viewer::on_configure2));
     viewer->signal_realize().connect(sigc::mem_fun(viewer, &Viewer::on_realize2));
 
+
+    #if GTK_CHECK_VERSION(3,0,0)
     app->run(*root_window, argc, argv);
+    #else
+    kit.run(*root_window);
+    #endif
 
   }
 }

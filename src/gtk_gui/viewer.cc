@@ -1,4 +1,11 @@
 #include "viewer.h"
+#include "blank_renderer.h"
+
+// Method called on GdkDrawable in 2.x and GdkWindow in 3.x
+#if !GTK_CHECK_VERSION(3,0,0)
+#error "Whoops"
+#define gdk_x11_window_get_xid(window) gdk_x11_drawable_get_xid(GDK_GRAWABLE(window))
+#endif
 
 
 GtkGui::Viewer::~Viewer() {
@@ -9,13 +16,12 @@ GtkGui::Viewer::~Viewer() {
   XFreeColormap(display, xcolormap);
   XFree(xvisual);
   g_object_unref(G_OBJECT(visual));
-
 }
 
-GtkGui::Viewer::Viewer(GtkDrawingArea *gobj, Glib::RefPtr<Gtk::Builder> builder) : Gtk::DrawingArea(gobj), xvisual(0), visual(0) {
+GtkGui::Viewer::Viewer(GtkDrawingArea *gobj, Glib::RefPtr<Gtk::Builder> builder) : Gtk::DrawingArea(gobj), xvisual(0), visual(0), renderer(new GtkGui::BlankRenderer()) {
 }
 
-GtkGui::Viewer::Viewer() : xvisual(0), visual(0) {
+GtkGui::Viewer::Viewer() : xvisual(0), visual(0), renderer(new GtkGui::BlankRenderer()) {
 }
 
 void GtkGui::Viewer::on_realize2() {
@@ -42,6 +48,7 @@ void GtkGui::Viewer::on_realize2() {
   gtk_widget_set_double_buffered(GTK_WIDGET(this->gobj()), FALSE);
 
   display = gdk_x11_display_get_xdisplay(gdk_window_get_display(window));
+
   id = gdk_x11_window_get_xid(window);
 
   xscreen = DefaultScreen(display);
@@ -60,12 +67,7 @@ void GtkGui::Viewer::on_realize2() {
 
 
   if (glXMakeCurrent(display, id, context) == TRUE) {
-      glEnable(GL_DEPTH_TEST);
-      glDepthFunc(GL_LEQUAL);
-      glEnable(GL_CULL_FACE);
-      glCullFace(GL_BACK);
-      glDisable(GL_DITHER);
-      glShadeModel(GL_SMOOTH);
+    renderer->realize();
   }
 
 }
@@ -86,11 +88,12 @@ bool GtkGui::Viewer::on_configure2(GdkEventConfigure* const&) {
 
     window = gtk_widget_get_window(GTK_WIDGET(this->gobj()));
     display = gdk_x11_display_get_xdisplay(gdk_window_get_display(window));
+
     id = gdk_x11_window_get_xid(window);
 
     if (glXMakeCurrent(display, id, context) == TRUE) {
-        gtk_widget_get_allocation(GTK_WIDGET(this->gobj()), &allocation);
-        glViewport(0, 0, allocation.width, allocation.height);
+      gtk_widget_get_allocation(GTK_WIDGET(this->gobj()), &allocation);
+      renderer->configure(allocation.width, allocation.height);
     }
 
   }
@@ -107,28 +110,12 @@ bool GtkGui::Viewer::on_expose2(const Cairo::RefPtr<Cairo::Context>&) {
   if (visual) {
     window = gtk_widget_get_window(GTK_WIDGET(this->gobj()));
     display = gdk_x11_display_get_xdisplay(gdk_window_get_display(window));
+
     id = gdk_x11_window_get_xid(window);
 
     if (glXMakeCurrent(display, id, context) == TRUE) {
-        glClear(GL_DEPTH_BUFFER_BIT);
-
-        glMatrixMode(GL_PROJECTION);
-        glLoadIdentity();
-        glOrtho(0, 100, 100, 0, -1, 1);
-
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
-
-        glClearColor(0, 0, 0, 1);
-        glClear(GL_COLOR_BUFFER_BIT);
-        glColor3f(1, 1, 1);
-        glBegin(GL_TRIANGLES);
-        glVertex2f(10, 10);
-        glVertex2f(10, 90);
-        glVertex2f(90, 90);
-        glEnd();
-
-        glXSwapBuffers(display, id);
+      renderer->draw();
+      glXSwapBuffers(display, id);
     }
   }
 
