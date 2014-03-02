@@ -4,15 +4,14 @@
 #include <gtkmm/drawingarea.h>
 #include <gtk/gtk.h>
 #include <stdlib.h>
-#include <GL/gl.h>
-#include <GL/glx.h>
 #include <boost/shared_ptr.hpp>
 
-#include <gdk/gdkx.h>
 #include "gtk_gui.h"
 #include "renderer.h"
 
 namespace GtkGui {
+  class ViewerImpl;
+
   class Viewer : public Gtk::DrawingArea {
 
     // This class doesn't use GtkGlExt or GtkGlarea since they don't support GTK+-3.0.
@@ -33,10 +32,7 @@ namespace GtkGui {
     bool on_expose1();
 
     private:
-    GLXContext context;
-    Colormap xcolormap;
-    XVisualInfo *xvisual;
-    GdkVisual *visual;
+    GtkGui::ViewerImpl& impl;
     boost::shared_ptr<GtkGui::Renderer> renderer;
   };
 }

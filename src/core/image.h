@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include "point2d.h"
+#include <opencv2/opencv.hpp>
 
 namespace Core {
   class Image {
@@ -15,13 +16,11 @@ namespace Core {
 
     std::string path;
 
-    bool is_projection_matrix_known();
+    boost::shared_ptr<cv::Mat> pixels() {
+      return boost::shared_ptr<cv::Mat>(new cv::Mat(cv::imread(path, CV_LOAD_IMAGE_COLOR)));
+    }
 
     std::vector<Core::Point2D> points;
-    private:
-    bool _is_projection_matrix_known;
-//    cv::Image _image// Or other
-//    cv::Mat<double> _projection_matrix;
 
   };
 }

@@ -16,6 +16,6 @@ photogrammetry_SOURCES = \
 
 #libphotogrammetry_la_SOURCES = src/gtk_gui.cc
 
-AM_CXXFLAGS = $(gl_CFLAGS) $(GTKMM_CFLAGS) -fno-builtin-malloc -fno-builtin-free -g
-LIBS = $(gl_LIBS) $(GTKMM_LIBS) -lX11
+AM_CXXFLAGS = $(gl_CFLAGS) $(glew_CFLAGS) $(GTKMM_CFLAGS) $(opencv_CFLAGS) -fno-builtin-malloc -fno-builtin-free -g
+LIBS = $(gl_LIBS) $(glew_LIBS) $(GTKMM_LIBS) $(opencv_LIBS) -lX11 -g
 
