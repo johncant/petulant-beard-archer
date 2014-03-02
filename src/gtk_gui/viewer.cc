@@ -1,5 +1,32 @@
 #include "viewer.h"
 #include "blank_renderer.h"
+#include "image_view_renderer.h"
+#include <GL/gl.h>
+#include <GL/glx.h>
+#include <gdk/gdkx.h>
+
+namespace GtkGui {
+  class ViewerImpl {
+    friend class GtkGui::Viewer;
+    GLXContext context;
+    Colormap xcolormap;
+    XVisualInfo *xvisual;
+    GdkVisual *visual;
+    ViewerImpl() :
+      xvisual(0),
+      visual(0)
+    { }
+  };
+}
+
+
+// TODO - remove me. I am for testing only:
+#include "../core/image.h"
+static boost::shared_ptr<Core::Image> test_image() {
+  boost::shared_ptr<Core::Image> img(new Core::Image());
+  img->path = "test.jpg";
+  return img;
+}
 
 // Method called on GdkDrawable in 2.x and GdkWindow in 3.x
 #if !GTK_CHECK_VERSION(3,0,0)
@@ -12,16 +39,23 @@ GtkGui::Viewer::~Viewer() {
   GdkWindow *window = gtk_widget_get_window(GTK_WIDGET(this->gobj()));
   Display *display = gdk_x11_display_get_xdisplay(gdk_window_get_display(window));
 
-  glXDestroyContext(display, context);
-  XFreeColormap(display, xcolormap);
-  XFree(xvisual);
-  g_object_unref(G_OBJECT(visual));
+  glXDestroyContext(display, impl.context);
+  XFreeColormap(display, impl.xcolormap);
+  XFree(impl.xvisual);
+  g_object_unref(G_OBJECT(impl.visual));
+
+  delete &impl;
 }
 
-GtkGui::Viewer::Viewer(GtkDrawingArea *gobj, Glib::RefPtr<Gtk::Builder> builder) : Gtk::DrawingArea(gobj), xvisual(0), visual(0), renderer(new GtkGui::BlankRenderer()) {
+GtkGui::Viewer::Viewer(GtkDrawingArea *gobj, Glib::RefPtr<Gtk::Builder> builder) :
+  Gtk::DrawingArea(gobj),
+  impl(*new GtkGui::ViewerImpl()),
+  renderer(new GtkGui::ImageViewRenderer(test_image())) {
 }
 
-GtkGui::Viewer::Viewer() : xvisual(0), visual(0), renderer(new GtkGui::BlankRenderer()) {
+GtkGui::Viewer::Viewer() :
+  impl(*new GtkGui::ViewerImpl()),
+  renderer(new GtkGui::ImageViewRenderer(test_image())) {
 }
 
 void GtkGui::Viewer::on_realize2() {
@@ -52,21 +86,22 @@ void GtkGui::Viewer::on_realize2() {
   id = gdk_x11_window_get_xid(window);
 
   xscreen = DefaultScreen(display);
-  xvisual = glXChooseVisual(display, xscreen, attributes);
+  impl.xvisual = glXChooseVisual(display, xscreen, attributes);
 
   screen = gdk_screen_get_default();
-  visual = gdk_x11_screen_lookup_visual(screen, xvisual->visualid);
+  impl.visual = gdk_x11_screen_lookup_visual(screen, impl.xvisual->visualid);
   root = RootWindow(display, xscreen);
-  xcolormap = XCreateColormap(display, root, xvisual->visual, AllocNone);
-  gtk_widget_set_visual(GTK_WIDGET(this->gobj()), visual);
-  context = glXCreateContext(display, xvisual, NULL, TRUE);
+  impl.xcolormap = XCreateColormap(display, root, impl.xvisual->visual, AllocNone);
+  gtk_widget_set_visual(GTK_WIDGET(this->gobj()), impl.visual);
+  impl.context = glXCreateContext(display, impl.xvisual, NULL, TRUE);
 
-  free(xvisual);
+  free(impl.xvisual);
 
   gtk_widget_set_size_request(GTK_WIDGET(this->gobj()), 100, 100);
 
 
-  if (glXMakeCurrent(display, id, context) == TRUE) {
+  if (glXMakeCurrent(display, id, impl.context) == TRUE) {
+    std::cout << "context " << impl.context << std::endl;
     renderer->realize();
   }
 
@@ -82,16 +117,16 @@ bool GtkGui::Viewer::on_configure2(GdkEventConfigure* const&) {
   int id;
 
   std::cout << "configure event" << std::endl;
-  std::cout << "visual" << visual << std::endl;
+  std::cout << "visual" << impl.visual << std::endl;
 
-  if (visual) {
+  if (impl.visual) {
 
     window = gtk_widget_get_window(GTK_WIDGET(this->gobj()));
     display = gdk_x11_display_get_xdisplay(gdk_window_get_display(window));
 
     id = gdk_x11_window_get_xid(window);
 
-    if (glXMakeCurrent(display, id, context) == TRUE) {
+    if (glXMakeCurrent(display, id, impl.context) == TRUE) {
       gtk_widget_get_allocation(GTK_WIDGET(this->gobj()), &allocation);
       renderer->configure(allocation.width, allocation.height);
     }
@@ -115,13 +150,13 @@ bool GtkGui::Viewer::on_expose1() {
   int id;
 
   std::cout << "expose event" << std::endl;
-  if (visual) {
+  if (impl.visual) {
     window = gtk_widget_get_window(GTK_WIDGET(this->gobj()));
     display = gdk_x11_display_get_xdisplay(gdk_window_get_display(window));
 
     id = gdk_x11_window_get_xid(window);
 
-    if (glXMakeCurrent(display, id, context) == TRUE) {
+    if (glXMakeCurrent(display, id, impl.context) == TRUE) {
       renderer->draw();
       glXSwapBuffers(display, id);
     }
