@@ -1,6 +1,5 @@
 #include "viewer.h"
-#include "blank_renderer.h"
-#include "image_view_renderer.h"
+#include "image_view_controller.h"
 #include <GL/gl.h>
 #include <GL/glx.h>
 #include <gdk/gdkx.h>
@@ -50,12 +49,12 @@ GtkGui::Viewer::~Viewer() {
 GtkGui::Viewer::Viewer(GtkDrawingArea *gobj, Glib::RefPtr<Gtk::Builder> builder) :
   Gtk::DrawingArea(gobj),
   impl(*new GtkGui::ViewerImpl()),
-  renderer(new GtkGui::ImageViewRenderer(test_image())) {
+  controller(new GtkGui::ImageViewController(test_image())) {
 }
 
 GtkGui::Viewer::Viewer() :
   impl(*new GtkGui::ViewerImpl()),
-  renderer(new GtkGui::ImageViewRenderer(test_image())) {
+  controller(new GtkGui::ImageViewController(test_image())) {
 }
 
 void GtkGui::Viewer::on_realize2() {
@@ -102,7 +101,7 @@ void GtkGui::Viewer::on_realize2() {
 
   if (glXMakeCurrent(display, id, impl.context) == TRUE) {
     std::cout << "context " << impl.context << std::endl;
-    renderer->realize();
+    controller->realize();
   }
 
 }
@@ -128,7 +127,7 @@ bool GtkGui::Viewer::on_configure2(GdkEventConfigure* const&) {
 
     if (glXMakeCurrent(display, id, impl.context) == TRUE) {
       gtk_widget_get_allocation(GTK_WIDGET(this->gobj()), &allocation);
-      renderer->configure(allocation.width, allocation.height);
+      controller->configure(allocation.width, allocation.height);
     }
 
   }
@@ -157,10 +156,11 @@ bool GtkGui::Viewer::on_expose1() {
     id = gdk_x11_window_get_xid(window);
 
     if (glXMakeCurrent(display, id, impl.context) == TRUE) {
-      renderer->draw();
+      controller->draw();
       glXSwapBuffers(display, id);
     }
   }
 
 }
+
 
