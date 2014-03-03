@@ -8,6 +8,7 @@
 
 #include "gtk_gui.h"
 #include "renderer.h"
+#include "viewer_controller.h"
 
 namespace GtkGui {
   class ViewerImpl;
@@ -33,7 +34,7 @@ namespace GtkGui {
 
     private:
     GtkGui::ViewerImpl& impl;
-    boost::shared_ptr<GtkGui::Renderer> renderer;
+    boost::shared_ptr<GtkGui::ViewerController> controller;
   };
 }
 
