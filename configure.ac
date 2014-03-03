@@ -18,9 +18,12 @@ AC_PROG_INSTALL
 # Checks for libraries.
 #PKG_CHECK_MODULES(GTKMM, [gtkmm-3.0])
 PKG_CHECK_MODULES(GTKMM, [gtkmm-2.4])
-PKG_CHECK_MODULES(gl, [gl]) # TODO - check version.
+PKG_CHECK_MODULES(gl, [gl >= 3.2]) # TODO - check version.
+
+# Lower limit on xcb-glx is a result of glXCreateContextAttribsARB
+PKG_CHECK_MODULES(glx, [xcb-glx >= 1.4])
 PKG_CHECK_MODULES(glew, [glew]) # TODO - check version.
-PKG_CHECK_MODULES(opencv, [opencv]) # TODO - check version.
+PKG_CHECK_MODULES(opencv, [opencv >= 2.0]) # TODO - check version.
 
 # Checks for header files.
 AC_CHECK_HEADERS([stdlib.h])

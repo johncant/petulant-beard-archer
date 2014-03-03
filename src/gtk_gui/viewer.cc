@@ -2,6 +2,7 @@
 #include "image_view_controller.h"
 #include <GL/gl.h>
 #include <GL/glx.h>
+#include <GL/glxext.h>
 #include <gdk/gdkx.h>
 
 namespace GtkGui {
@@ -18,6 +19,8 @@ namespace GtkGui {
   };
 }
 
+typedef GLXContext (*glXCreateContextAttribsARBProc)(Display*, GLXFBConfig, GLXContext, Bool, const int*);
+
 
 // TODO - remove me. I am for testing only:
 #include "../core/image.h"
@@ -30,6 +33,7 @@ static boost::shared_ptr<Core::Image> test_image() {
 // Method called on GdkDrawable in 2.x and GdkWindow in 3.x
 #if !GTK_CHECK_VERSION(3,0,0)
   #warning "Does opencv support GTK3 yet?"
+  #warning "Does GtkGLext or GtkGLArea support GTK3 yet?"
   #define gdk_x11_window_get_xid(window) gdk_x11_drawable_get_xid(GDK_DRAWABLE(window))
 #endif
 
@@ -92,7 +96,101 @@ void GtkGui::Viewer::on_realize2() {
   root = RootWindow(display, xscreen);
   impl.xcolormap = XCreateColormap(display, root, impl.xvisual->visual, AllocNone);
   gtk_widget_set_visual(GTK_WIDGET(this->gobj()), impl.visual);
-  impl.context = glXCreateContext(display, impl.xvisual, NULL, TRUE);
+//  impl.context = glXCreateContext(display, impl.xvisual, NULL, TRUE);
+
+  // Create context, specifying required OpenGL version:
+
+  static glXCreateContextAttribsARBProc glXCreateContextAttribsARB = 0;
+  glXCreateContextAttribsARB = (glXCreateContextAttribsARBProc)
+  glXGetProcAddressARB( (const GLubyte *) "glXCreateContextAttribsARB");
+
+  // FBConfigs were added in GLX version 1.3.
+  int glx_major, glx_minor;
+  if ( !glXQueryVersion( display, &glx_major, &glx_minor ) || 
+       ( ( glx_major == 1 ) && ( glx_minor < 3 ) ) || ( glx_major < 1 ) )
+  {
+    std::cout << "GLX Version >= 1.4 required" << std::endl;
+    // TODO
+    exit(1);
+  }
+
+  // Check for function glXCreateContextAttribsARB
+  if (!glXCreateContextAttribsARB) {
+    std::cout << "glXCreateContextAttribsARB not found." << std::endl;
+    std::cout << "Your machine does not support GLX >= 1.4" << std::endl;
+
+    // TODO
+    exit(1);
+  }
+
+  static int visual_attribs[] = {
+    GLX_X_RENDERABLE    , True,
+    GLX_DRAWABLE_TYPE   , GLX_WINDOW_BIT,
+    GLX_RENDER_TYPE     , GLX_RGBA_BIT,
+    GLX_X_VISUAL_TYPE   , GLX_TRUE_COLOR,
+    GLX_RED_SIZE        , 8,
+    GLX_GREEN_SIZE      , 8,
+    GLX_BLUE_SIZE       , 8,
+    GLX_ALPHA_SIZE      , 8,
+    GLX_DOUBLEBUFFER    , True,
+    None
+  };
+
+
+  // Set up glXCreateContextAttribsARB
+  int fb_count;
+  GLXFBConfig *fbc = glXChooseFBConfig(display, xscreen, visual_attribs, &fb_count);
+  std::cout << "Found " << fb_count << " matching FBconfigs" << std::endl;
+
+  GLXFBConfig *chosen_fbc = 0;
+
+  printf( "Getting XVisualInfos\n" );
+  if (fb_count == 0) {
+    std::cout << "Found no valid FBConfig" << std::endl;
+    exit(1);
+  }
+
+  int best_fbc = -1, worst_fbc = -1, best_num_samp = -1, worst_num_samp = 999;
+
+  int i;
+  for (i=0; i<fb_count; ++i)
+  {
+    XVisualInfo *vi = glXGetVisualFromFBConfig( display, fbc[i] );
+    if ( vi )
+    {
+      int samp_buf, samples;
+      glXGetFBConfigAttrib( display, fbc[i], GLX_SAMPLE_BUFFERS, &samp_buf );
+      glXGetFBConfigAttrib( display, fbc[i], GLX_SAMPLES       , &samples  );
+
+      printf( "  Matching fbconfig %d, visual ID 0x%2x: SAMPLE_BUFFERS = %d,"
+              " SAMPLES = %d\n", 
+              i, vi -> visualid, samp_buf, samples );
+
+      if ( best_fbc < 0 || samp_buf && samples > best_num_samp )
+        best_fbc = i, best_num_samp = samples;
+      if ( worst_fbc < 0 || !samp_buf || samples < worst_num_samp )
+        worst_fbc = i, worst_num_samp = samples;
+    }
+    XFree( vi );
+  }
+
+
+  int attribs[] = {
+    GLX_CONTEXT_MAJOR_VERSION_ARB, 3,
+    GLX_CONTEXT_MINOR_VERSION_ARB, 2,
+    0
+  };
+
+  std::cout << "using FBConfig " << best_fbc << std::endl;
+  impl.context = glXCreateContextAttribsARB(display, fbc[best_fbc], NULL, true, attribs);
+
+  XSync(display, False);
+  if (!impl.context) {
+    std::cout << "Your machine does not support OpenGL 3.2" << std::endl;
+
+    // TODO
+    exit(0);
+  }
 
   free(impl.xvisual);
 

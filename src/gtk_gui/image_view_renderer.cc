@@ -5,9 +5,6 @@
 //#include <boost/mpl/equal.hpp>
 #include <string>
 
-#define GLX_CONTEXT_MAJOR_VERSION_ARB       0x2091
-#define GLX_CONTEXT_MINOR_VERSION_ARB       0x2092
-
 // Gave up on operators and templates and used macro
 static void HandleOpenGLError(const char* stmt, const char* fname, int line)
 {
