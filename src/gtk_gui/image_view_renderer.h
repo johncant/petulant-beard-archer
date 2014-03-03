@@ -20,6 +20,8 @@ namespace GtkGui {
     GLuint shader_program;
     GLuint vertex_shader;
     GLuint fragment_shader;
+    double vp_width;
+    double vp_height;
     void init_shaders();
     GLuint compile(const std::string& shader, GLenum type);
     GLuint compile(const char* shader, GLenum type);
