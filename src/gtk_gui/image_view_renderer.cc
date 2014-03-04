@@ -4,6 +4,7 @@
 //#include <boost/mpl/if.hpp>
 //#include <boost/mpl/equal.hpp>
 #include <string>
+#include "../core/transform2d.h"
 
 #define GLX_CONTEXT_MAJOR_VERSION_ARB       0x2091
 #define GLX_CONTEXT_MINOR_VERSION_ARB       0x2092
@@ -63,6 +64,51 @@ static const std::string fragment_shader_source = ""
 "  gl_FragColor = 0.5*image+0.5*zoom_heat;\n"
 "//  gl_FragColor = vec4(0.0, 1.0, 1.0, 1.0);\n"
 "}\n";
+
+namespace Tr2 = Core::Transform2D;
+
+// The transformation between image 0-1 coordinates and viewport 0-1 coordinates
+class ImageToViewport :
+  public Tr2::Transformation<Tr2::AtOrigin<Tr2::Scaling> > {
+  public:
+  inline ImageToViewport(double img_aspect, double vp_aspect) :
+    Transformation<AtOrigin<Tr2::Scaling> >(
+      0.5, 0.5,
+      Transformation<Tr2::Scaling>(
+        img_aspect > vp_aspect ? vp_aspect  / img_aspect : 1.0,
+        img_aspect > vp_aspect ? 1.0                     : img_aspect /  vp_aspect
+      )
+    )
+  {
+  }
+};
+
+// TODO - Use a combination of transformations
+class OriginDistortion : public Tr2::Base {
+  public:
+  double zoom, sigma;
+  OriginDistortion(double _zoom, double _sigma) : zoom(_zoom), sigma(_sigma) {
+  }
+
+  Core::Point2D t(Core::Point2D input) {
+    double ndist = sqrt(input.x*input.x + input.y*input.y)/sigma;
+
+    double warp = 1.0 + (zoom-1.0)*exp(-0.5*ndist*ndist);
+
+    return Core::Point2D(
+      input.x*warp,
+      input.y*warp
+    );
+  }
+};
+
+class Distortion : public Tr2::AtOrigin<OriginDistortion> {
+  public:
+  Distortion(double ox, double oy, double zoom, double sigma) :
+    Tr2::AtOrigin<OriginDistortion>(ox, oy, OriginDistortion(zoom, sigma))
+  {
+  }
+};
 
 GLuint GtkGui::ImageViewRenderer::compile(const std::string& source, GLenum type) {
   const GLchar* c_source = source.c_str();
@@ -207,29 +253,18 @@ void GtkGui::ImageViewRenderer::draw() {
   GL_CHECK(glUseProgram(shader_program));
   GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));
 
-  double hw_x = 0.5,
-         hw_y = 0.5;
+  Tr2::Transformation<ImageToViewport> sp_trans(double(pixels->rows)/double(pixels->cols), vp_height/vp_width);
 
-  // Aspect is like portraitness
-  double img_aspect = double(pixels->rows)/double(pixels->cols);
-  double vp_aspect = vp_height/vp_width;
-  double half_wx, half_wy;
-
-  if (img_aspect > vp_aspect) {
-    // Space left and right
-    half_wy = 0.5;
-    half_wx = 0.5*vp_aspect/img_aspect;
-  } else {
-    // Space top and bottom
-    half_wx = 0.5;
-    half_wy = 0.5*img_aspect/vp_aspect;
-  }
+  Core::Point2D p1 = sp_trans.t(0.0, 0.0);
+  Core::Point2D p2 = sp_trans.t(0.0, 1.0);
+  Core::Point2D p3 = sp_trans.t(1.0, 1.0);
+  Core::Point2D p4 = sp_trans.t(1.0, 0.0);
 
   const float positions[] = {
-    0.5-half_wx, 0.5-half_wy,
-    0.5-half_wx, 0.5+half_wy,
-    0.5+half_wx, 0.5+half_wy,
-    0.5+half_wx, 0.5-half_wy
+    p1.x, p1.y,
+    p2.x, p2.y,
+    p3.x, p3.y,
+    p4.x, p4.y
   };
 
   const float tex_coords[] = {
@@ -273,4 +308,9 @@ void GtkGui::ImageViewRenderer::draw() {
   // Image
   GL_CHECK(glDrawArrays(GL_QUADS, 0, 4));
 
+}
+
+Core::Point2D GtkGui::ImageViewRenderer::image_position_from_cursor(double x, double y) {
+  // Transform point to image coords
+  return Core::Point2D(x, y);
 }

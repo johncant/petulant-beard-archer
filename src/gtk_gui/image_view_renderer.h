@@ -31,6 +31,7 @@ namespace GtkGui {
     void draw();
     void configure(unsigned int width, unsigned int height);
     void realize();
+    Core::Point2D image_position_from_cursor(double x, double y);
   };
 }
 

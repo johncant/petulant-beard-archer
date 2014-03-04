@@ -4,6 +4,7 @@
 #include <boost/shared_ptr.hpp>
 #include "viewer_controller.h"
 #include "../core/image.h"
+#include "../core/point2d.h"
 
 namespace GtkGui {
   class ImageViewController : public ViewerController {
@@ -14,6 +15,7 @@ namespace GtkGui {
     public:
     ImageViewController(boost::shared_ptr<Core::Image> im);
     ~ImageViewController();
+
     void draw();
     void configure(unsigned int width, unsigned int height);
     void realize();
