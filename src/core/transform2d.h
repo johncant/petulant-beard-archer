@@ -43,6 +43,8 @@ namespace Core {
       inline Transformation() : backend() {
       }
 
+      typedef Transformation<typename backend::Inverse> Inverse;
+
       template <class CA1>
       inline Transformation(CA1 ca1) : backend(ca1) {
       }
@@ -64,6 +66,7 @@ namespace Core {
     template <class T1, class T2>
     class CombinationBase : public Base {
       public:
+      typedef Transformation<CombinationBase<typename Transformation<T2>::Inverse, typename T1::Inverse> > Inverse;
       T1 t1;
       T2 t2;
 
@@ -75,7 +78,6 @@ namespace Core {
         t1(_transform1), t2(_transform2) {
       }
 
-      template <class Inverse>
       inline Inverse inverse() {
         return Inverse(t2.inverse(), t1.inverse());
       }
@@ -83,6 +85,7 @@ namespace Core {
 
     class TranslationBase : public Base {
       public:
+      typedef Transformation<TranslationBase> Inverse;
 
       double tx;
       double ty;
@@ -94,7 +97,6 @@ namespace Core {
         return Core::Point2D(input.x+tx, input.y+ty);
       }
 
-      template <class Inverse>
       inline Inverse inverse() {
         return Inverse(-tx, -ty);
       }
@@ -104,6 +106,7 @@ namespace Core {
 
     class ScalingBase : public Base {
       public:
+      typedef Transformation<ScalingBase> Inverse;
 
       double scale_x;
       double scale_y;
@@ -115,7 +118,6 @@ namespace Core {
         return Core::Point2D(scale_x*input.x, scale_y*input.y);
       }
 
-      template <class Inverse>
       inline Inverse inverse() {
         return Inverse(1.0/scale_x, 1.0/scale_y);
       }
@@ -126,7 +128,10 @@ namespace Core {
     template <class other>
     class AtOrigin : public CombinationBase<CombinationBase<Translation, other>, Translation> {
       public:
-      AtOrigin(double _ox, double _oy, other _other) :
+
+      typedef Transformation<AtOrigin<typename other::Inverse> > Inverse;
+
+      inline AtOrigin(double _ox, double _oy, other _other) :
         CombinationBase<
           CombinationBase<
             Translation,
@@ -140,6 +145,10 @@ namespace Core {
           ),
           Translation(_ox, _oy)
         ) {
+      }
+
+      inline Inverse inverse() {
+        return Inverse(this->t2.tx, this->t2.ty, this->t1.t2.inverse());
       }
     };
 

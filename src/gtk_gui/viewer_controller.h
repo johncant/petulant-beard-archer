@@ -3,6 +3,7 @@
 
 #include <boost/shared_ptr.hpp>
 #include "renderer.h"
+#include <gdk/gdk.h>
 
 namespace GtkGui {
   class ViewerController {

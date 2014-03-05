@@ -4,7 +4,6 @@
 //#include <boost/mpl/if.hpp>
 //#include <boost/mpl/equal.hpp>
 #include <string>
-#include "../core/transform2d.h"
 
 #define GLX_CONTEXT_MAJOR_VERSION_ARB       0x2091
 #define GLX_CONTEXT_MINOR_VERSION_ARB       0x2092
@@ -14,7 +13,7 @@ static void HandleOpenGLError(const char* stmt, const char* fname, int line)
 {
   GLenum err;
   while ((err = glGetError()) != GL_NO_ERROR) {
-    std::cout << "OpenGL error " << err << " from function " << stmt << " called from "<< line << ":" << fname << std::endl;
+    std::cout << "OpenGL error " << err << " from function " << stmt << " called from "<< fname << ":" << line << std::endl;
   }
 }
 
@@ -47,69 +46,68 @@ const std::string vertex_shader_source = ""
 // uv' = (uv-cz)/z(uv) + cz
 static const std::string fragment_shader_source = ""
 "#version 130\n"
-"varying vec2 uv;\n"
-"precision mediump float;\n"
-"uniform sampler2D image;\n"
 "\n"
-"vec2 distortion_point = vec2(0.45, 0.4);\n"
-"float zoom = 2.0;\n"
+"precision mediump float;\n"
+"\n"
+"varying vec2 uv;\n"
+"\n"
+"uniform sampler2D image;\n"
+"uniform float zoom;\n"
+"uniform vec2 zoom_center;\n"
 "\n"
 "void main() {\n"
-"  float distance = length(distortion_point-uv);\n"
+"  float distance = length(zoom_center-uv);\n"
 "  float sigma = 0.1;\n"
 "  float local_zoom = 1+(zoom-1)*exp(-0.5*dot(distance/sigma, distance/sigma));\n"
-"  vec2 distorted_uv = distortion_point + (uv - distortion_point)/local_zoom;\n"
+"  vec2 distorted_uv = zoom_center + (uv - zoom_center)/local_zoom;\n"
 "  vec4 zoom_heat = vec4(2-local_zoom, local_zoom-1, 0, 1);\n"
 "  vec4 image = texture2D(image, distorted_uv);\n"
-"  gl_FragColor = 0.5*image+0.5*zoom_heat;\n"
+"//  gl_FragColor = 0.5*image+0.5*zoom_heat;\n"
+"  gl_FragColor = image;\n"
 "//  gl_FragColor = vec4(0.0, 1.0, 1.0, 1.0);\n"
 "}\n";
 
 namespace Tr2 = Core::Transform2D;
 
 // The transformation between image 0-1 coordinates and viewport 0-1 coordinates
-class ImageToViewport :
-  public Tr2::Transformation<Tr2::AtOrigin<Tr2::Scaling> > {
-  public:
-  inline ImageToViewport(double img_aspect, double vp_aspect) :
-    Transformation<AtOrigin<Tr2::Scaling> >(
-      0.5, 0.5,
-      Transformation<Tr2::Scaling>(
-        img_aspect > vp_aspect ? vp_aspect  / img_aspect : 1.0,
-        img_aspect > vp_aspect ? 1.0                     : img_aspect /  vp_aspect
-      )
+inline GtkGui::ImageViewRenderer::ImageToViewport::ImageToViewport(double img_aspect, double vp_aspect) :
+  Transformation<AtOrigin<Tr2::Scaling> >(
+    0.5, 0.5,
+    Transformation<Tr2::Scaling>(
+      img_aspect > vp_aspect ? vp_aspect  / img_aspect : 1.0,
+      img_aspect > vp_aspect ? 1.0                     : img_aspect /  vp_aspect
     )
-  {
-  }
-};
+  )
+{
+}
 
-// TODO - Use a combination of transformations
-class OriginDistortion : public Tr2::Base {
-  public:
-  double zoom, sigma;
-  OriginDistortion(double _zoom, double _sigma) : zoom(_zoom), sigma(_sigma) {
-  }
+// Origin distortion
+GtkGui::ImageViewRenderer::OriginDistortion::OriginDistortion(double _zoom, double _sigma) : zoom(_zoom), sigma(_sigma) {
+}
 
-  Core::Point2D t(Core::Point2D input) {
-    double ndist = sqrt(input.x*input.x + input.y*input.y)/sigma;
+Core::Point2D GtkGui::ImageViewRenderer::OriginDistortion::t(Core::Point2D input) {
+  double ndist = sqrt(input.x*input.x + input.y*input.y)/sigma;
 
-    double warp = 1.0 + (zoom-1.0)*exp(-0.5*ndist*ndist);
+  double warp = 1.0 + (zoom-1.0)*exp(-0.5*ndist*ndist);
 
-    return Core::Point2D(
-      input.x*warp,
-      input.y*warp
-    );
-  }
-};
+  return Core::Point2D(
+    input.x*warp,
+    input.y*warp
+  );
+}
 
-class Distortion : public Tr2::AtOrigin<OriginDistortion> {
-  public:
-  Distortion(double ox, double oy, double zoom, double sigma) :
-    Tr2::AtOrigin<OriginDistortion>(ox, oy, OriginDistortion(zoom, sigma))
-  {
-  }
-};
+// Distortion anywhere
+GtkGui::ImageViewRenderer::DistortionBase::DistortionBase(double ox, double oy, double zoom, double sigma) :
+  Tr2::AtOrigin<OriginDistortion>(ox, oy, OriginDistortion(zoom, sigma))
+{
+}
 
+GtkGui::ImageViewRenderer::DistortionBase::DistortionBase(Core::Point2D origin, double zoom, double sigma) :
+  Tr2::AtOrigin<OriginDistortion>(origin.x, origin.y, OriginDistortion(zoom, sigma))
+{
+}
+
+// Renderer
 GLuint GtkGui::ImageViewRenderer::compile(const std::string& source, GLenum type) {
   const GLchar* c_source = source.c_str();
   return compile(c_source, type);
@@ -195,7 +193,9 @@ GtkGui::ImageViewRenderer::ImageViewRenderer(boost::shared_ptr<Core::Image> im) 
   gl_tex_id(0),
   shader_program(0),
   fragment_shader(0),
-  vertex_shader(0) {
+  vertex_shader(0),
+  zoom(1.0),
+  zoom_center(0.5, 0.5) {
 }
 
 GtkGui::ImageViewRenderer::~ImageViewRenderer() {
@@ -253,7 +253,8 @@ void GtkGui::ImageViewRenderer::draw() {
   GL_CHECK(glUseProgram(shader_program));
   GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));
 
-  Tr2::Transformation<ImageToViewport> sp_trans(double(pixels->rows)/double(pixels->cols), vp_height/vp_width);
+  //Tr2::Transformation<ImageToViewport> sp_trans(double(pixels->rows)/double(pixels->cols), vp_height/vp_width);
+  Tr2::Transformation<ImageToViewport> sp_trans = get_image_to_viewport_transform();
 
   Core::Point2D p1 = sp_trans.t(0.0, 0.0);
   Core::Point2D p2 = sp_trans.t(0.0, 1.0);
@@ -301,6 +302,19 @@ void GtkGui::ImageViewRenderer::draw() {
   GL_CHECK(glEnable(GL_TEXTURE_2D));
   GL_CHECK(glUniform1iARB(img_loc, 0));
 
+  // Zoom params
+  GLint zoom_loc, zoom_center_loc;
+  GLfloat zoom = this->zoom;
+  GLfloat zoom_center[2] = {
+    this->zoom_center.x, this->zoom_center.y
+  };
+
+  GL_CHECK(zoom_loc = glGetUniformLocation(shader_program, "zoom"));
+  GL_CHECK(zoom_center_loc = glGetUniformLocation(shader_program, "zoom_center"));
+
+  GL_CHECK(glUniform1fARB(zoom_loc, zoom));
+  GL_CHECK(glUniform2fARB(zoom_center_loc, zoom_center[0], zoom_center[1]));
+
   // Background
   GL_CHECK(glClearColor(0, 0, 0, 1));
   GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
@@ -314,3 +328,20 @@ Core::Point2D GtkGui::ImageViewRenderer::image_position_from_cursor(double x, do
   // Transform point to image coords
   return Core::Point2D(x, y);
 }
+
+void GtkGui::ImageViewRenderer::set_zoom(double _zoom) {
+  zoom = _zoom;
+}
+
+GtkGui::ImageViewRenderer::Distortion GtkGui::ImageViewRenderer::get_distortion_transform() {
+  return GtkGui::ImageViewRenderer::Distortion(zoom_center, zoom, 0.2);
+}
+
+GtkGui::ImageViewRenderer::ImageToViewport GtkGui::ImageViewRenderer::get_image_to_viewport_transform() {
+  return GtkGui::ImageViewRenderer::ImageToViewport(double(pixels->rows)/double(pixels->cols), vp_height/vp_width);
+}
+
+void GtkGui::ImageViewRenderer::set_zoom_center(Core::Point2D _zoom_center) {
+  zoom_center = get_image_to_viewport_transform().inverse().t(_zoom_center);
+}
+

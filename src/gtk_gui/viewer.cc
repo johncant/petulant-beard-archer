@@ -49,7 +49,9 @@ GtkGui::Viewer::~Viewer() {
 GtkGui::Viewer::Viewer(GtkDrawingArea *gobj, Glib::RefPtr<Gtk::Builder> builder) :
   Gtk::DrawingArea(gobj),
   impl(*new GtkGui::ViewerImpl()),
-  controller(new GtkGui::ImageViewController(test_image())) {
+  controller(new GtkGui::ImageViewController(test_image()))
+{
+  this->set_events(Gdk::ALL_EVENTS_MASK);
 }
 
 GtkGui::Viewer::Viewer() :
@@ -73,6 +75,7 @@ void GtkGui::Viewer::on_realize2() {
 
   std::cout << "Realize event" << std::endl;
 
+  // Set up OpenGL to work with X11
   window = gtk_widget_get_window(GTK_WIDGET(this->gobj()));
   std::cout << "window" << window << std::endl;
 
@@ -98,6 +101,21 @@ void GtkGui::Viewer::on_realize2() {
 
   gtk_widget_set_size_request(GTK_WIDGET(this->gobj()), 100, 100);
 
+  // Hack to bind signal
+
+  this->signal_motion_notify_event().connect(
+    sigc::mem_fun(
+      *boost::static_pointer_cast<GtkGui::ImageViewController>(controller),
+      &GtkGui::ImageViewController::on_motion_notify_event
+    )
+  );
+
+  this->signal_scroll_event().connect(
+    sigc::mem_fun(
+      *boost::static_pointer_cast<GtkGui::ImageViewController>(controller),
+      &GtkGui::ImageViewController::on_scroll
+    )
+  );
 
   if (glXMakeCurrent(display, id, impl.context) == TRUE) {
     std::cout << "context " << impl.context << std::endl;
