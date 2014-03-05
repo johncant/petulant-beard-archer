@@ -43,7 +43,7 @@ namespace Core {
       inline Transformation() : backend() {
       }
 
-      typedef Transformation<typename backend::Inverse> Inverse;
+      typedef typename backend::Inverse Inverse;
 
       template <class CA1>
       inline Transformation(CA1 ca1) : backend(ca1) {
@@ -60,13 +60,12 @@ namespace Core {
       template <class CA1, class CA2, class CA3, class CA4>
       inline Transformation(CA1 ca1, CA2 ca2, CA3 ca3, CA4 ca4) : backend(ca1, ca2, ca3, ca4) {
       }
-
     };
 
     template <class T1, class T2>
     class CombinationBase : public Base {
       public:
-      typedef Transformation<CombinationBase<typename Transformation<T2>::Inverse, typename T1::Inverse> > Inverse;
+      typedef Transformation<CombinationBase<typename T2::Inverse, typename T1::Inverse> > Inverse;
       T1 t1;
       T2 t2;
 
@@ -82,6 +81,10 @@ namespace Core {
         return Inverse(t2.inverse(), t1.inverse());
       }
     };
+
+    template <class T1, class T2> Transformation<CombinationBase<T1, T2> > combine(T1 t1, T2 t2) {
+      return CombinationBase<T1, T2>(t1, t2);
+    }
 
     class TranslationBase : public Base {
       public:
@@ -111,7 +114,7 @@ namespace Core {
       double scale_x;
       double scale_y;
 
-      inline ScalingBase(double _scale_x, double _scale_y) : scale_x(_scale_x), scale_y(_scale_y) {
+      inline ScalingBase(const double _scale_x, const double _scale_y) : scale_x(_scale_x), scale_y(_scale_y) {
       }
 
       inline Core::Point2D t(Core::Point2D input) {
@@ -129,7 +132,9 @@ namespace Core {
     class AtOrigin : public CombinationBase<CombinationBase<Translation, other>, Translation> {
       public:
 
-      typedef Transformation<AtOrigin<typename other::Inverse> > Inverse;
+      typedef Transformation<AtOrigin<
+        typename other::Inverse
+      > > Inverse;
 
       inline AtOrigin(double _ox, double _oy, other _other) :
         CombinationBase<

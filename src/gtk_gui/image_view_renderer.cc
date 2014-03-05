@@ -57,55 +57,22 @@ static const std::string fragment_shader_source = ""
 "\n"
 "void main() {\n"
 "  float distance = length(zoom_center-uv);\n"
-"  float sigma = 0.1;\n"
+"  float sigma = 0.2;\n"
 "  float local_zoom = 1+(zoom-1)*exp(-0.5*dot(distance/sigma, distance/sigma));\n"
 "  vec2 distorted_uv = zoom_center + (uv - zoom_center)/local_zoom;\n"
 "  vec4 zoom_heat = vec4(2-local_zoom, local_zoom-1, 0, 1);\n"
-"  vec4 image = texture2D(image, distorted_uv);\n"
-"//  gl_FragColor = 0.5*image+0.5*zoom_heat;\n"
-"  gl_FragColor = image;\n"
+"  vec4 image_col;\n"
+"  if (distorted_uv[0] < 0.0 || distorted_uv[1] < 0.0 || distorted_uv[0] > 1.0 || distorted_uv[1] > 1.0) {\n"
+"    image_col = vec4(0.0, 0.0, 0.0, 1.0);\n"
+"  } else {\n"
+"    image_col = texture2D(image, distorted_uv);\n"
+"  }\n"
+"//  gl_FragColor = 0.5*image_col+0.5*zoom_heat;\n"
+"  gl_FragColor = image_col;\n"
 "//  gl_FragColor = vec4(0.0, 1.0, 1.0, 1.0);\n"
 "}\n";
 
 namespace Tr2 = Core::Transform2D;
-
-// The transformation between image 0-1 coordinates and viewport 0-1 coordinates
-inline GtkGui::ImageViewRenderer::ImageToViewport::ImageToViewport(double img_aspect, double vp_aspect) :
-  Transformation<AtOrigin<Tr2::Scaling> >(
-    0.5, 0.5,
-    Transformation<Tr2::Scaling>(
-      img_aspect > vp_aspect ? vp_aspect  / img_aspect : 1.0,
-      img_aspect > vp_aspect ? 1.0                     : img_aspect /  vp_aspect
-    )
-  )
-{
-}
-
-// Origin distortion
-GtkGui::ImageViewRenderer::OriginDistortion::OriginDistortion(double _zoom, double _sigma) : zoom(_zoom), sigma(_sigma) {
-}
-
-Core::Point2D GtkGui::ImageViewRenderer::OriginDistortion::t(Core::Point2D input) {
-  double ndist = sqrt(input.x*input.x + input.y*input.y)/sigma;
-
-  double warp = 1.0 + (zoom-1.0)*exp(-0.5*ndist*ndist);
-
-  return Core::Point2D(
-    input.x*warp,
-    input.y*warp
-  );
-}
-
-// Distortion anywhere
-GtkGui::ImageViewRenderer::DistortionBase::DistortionBase(double ox, double oy, double zoom, double sigma) :
-  Tr2::AtOrigin<OriginDistortion>(ox, oy, OriginDistortion(zoom, sigma))
-{
-}
-
-GtkGui::ImageViewRenderer::DistortionBase::DistortionBase(Core::Point2D origin, double zoom, double sigma) :
-  Tr2::AtOrigin<OriginDistortion>(origin.x, origin.y, OriginDistortion(zoom, sigma))
-{
-}
 
 // Renderer
 GLuint GtkGui::ImageViewRenderer::compile(const std::string& source, GLenum type) {
@@ -220,10 +187,11 @@ void GtkGui::ImageViewRenderer::realize() {
   GL_CHECK(glGenTextures(1, &gl_tex_id));
   GL_CHECK(glBindTexture(GL_TEXTURE_2D, gl_tex_id));
 
-  GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT));
-  GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT));
+  GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP));
+  GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP));
   GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
   GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+  // TODO - CONFIG Same as background colour
 
   //   Assume RGB
   GL_CHECK(glTexImage2D(GL_TEXTURE_2D,
@@ -342,6 +310,11 @@ GtkGui::ImageViewRenderer::ImageToViewport GtkGui::ImageViewRenderer::get_image_
 }
 
 void GtkGui::ImageViewRenderer::set_zoom_center(Core::Point2D _zoom_center) {
-  zoom_center = get_image_to_viewport_transform().inverse().t(_zoom_center);
+
+  zoom_center = Tr2::combine(
+    get_distortion_transform(),
+    get_image_to_viewport_transform()
+  ).inverse().t(_zoom_center);
+
 }
 

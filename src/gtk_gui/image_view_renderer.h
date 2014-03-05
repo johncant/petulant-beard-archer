@@ -15,43 +15,87 @@ namespace GtkGui {
   class ImageViewRenderer : public Renderer {
     public:
     // The transformation between image 0-1 coordinates and viewport 0-1 coordinates
-    class ImageToViewport : public Core::Transform2D::Transformation<Core::Transform2D::AtOrigin<Core::Transform2D::Scaling> > {
-      public:
-      typedef Core::Transform2D::Scaling Inverse;
+    class ImageToViewport :
+      public Core::Transform2D::Transformation<
+        Core::Transform2D::AtOrigin<
+          Core::Transform2D::Scaling
+        >
+      >
+    {
 
-      inline ImageToViewport(double img_aspect, double vp_aspect);
+      public:
+      typedef Core::Transform2D::Transformation<
+        Core::Transform2D::AtOrigin<
+          Core::Transform2D::Scaling
+        >
+      > Inverse;
+
+      inline ImageToViewport(const double img_aspect, const double vp_aspect);
     };
 
     // TODO - Use a combination of transformations
-    class OriginDistortion;
-    class OriginUndistortion;
+    class OriginDistortionBase;
+    class OriginUndistortionBase;
 
-    class OriginUndistortion : public Core::Transform2D::Base {
+    class OriginUndistortionBase : public Core::Transform2D::Base {
       public:
-      typedef OriginDistortion Inverse;
-
+      class Inverse;
       double zoom, sigma;
 
-      OriginUndistortion(double _zoom, double _sigma);
+      OriginUndistortionBase(double _zoom, double _sigma);
       Core::Point2D t(Core::Point2D input);
+      template <class other>
+      OriginUndistortionBase(other t);
+      Inverse inverse();
     };
 
-    class OriginDistortion : public Core::Transform2D::Base {
+    class OriginDistortionBase : public Core::Transform2D::Base {
       public:
-      typedef OriginUndistortion Inverse;
+      class Inverse;
       double zoom, sigma;
 
-      OriginDistortion(double _zoom, double _sigma);
+      OriginDistortionBase(double _zoom, double _sigma);
       Core::Point2D t(Core::Point2D input);
+      template <class other>
+      OriginDistortionBase(other t);
+      Inverse inverse();
     };
 
-    class DistortionBase : public Core::Transform2D::AtOrigin<OriginDistortion> {
+    class OriginDistortionBase::Inverse : public OriginUndistortionBase {
+      public:
+      Inverse(double zoom, double sigma): OriginUndistortionBase(zoom, sigma) {}
+    };
+
+    class OriginUndistortionBase::Inverse : public OriginDistortionBase {
+      public:
+      Inverse(double zoom, double sigma): OriginDistortionBase(zoom, sigma) {}
+    };
+
+    class DistortionBase :
+      public Core::Transform2D::AtOrigin<
+        Core::Transform2D::Transformation<ImageViewRenderer::OriginDistortionBase>
+      >
+    {
       public:
       DistortionBase(double ox, double oy, double zoom, double sigma);
       DistortionBase(Core::Point2D pt, double zoom, double sigma);
     };
 
+    class UndistortionBase :
+      public Core::Transform2D::AtOrigin<
+        Core::Transform2D::Transformation<
+          ImageViewRenderer::OriginUndistortionBase
+        >
+      >
+    {
+      public:
+      UndistortionBase(double ox, double oy, double zoom, double sigma);
+      UndistortionBase(Core::Point2D pt, double zoom, double sigma);
+    };
+
     typedef Core::Transform2D::Transformation<DistortionBase> Distortion;
+    typedef Core::Transform2D::Transformation<UndistortionBase> Undistortion;
+
 
     private:
     boost::shared_ptr<Core::Image> image;
@@ -83,6 +127,107 @@ namespace GtkGui {
     void set_zoom(double zoom);
     void set_zoom_center(Core::Point2D zoom_center);
   };
+
+  // The transformation between image 0-1 coordinates and viewport 0-1 coordinates
+  inline GtkGui::ImageViewRenderer::ImageToViewport::ImageToViewport
+    (const double _img_aspect, const double _vp_aspect) :
+    Core::Transform2D::Transformation<
+      Core::Transform2D::AtOrigin<
+        Core::Transform2D::Scaling
+      >
+    >(
+      0.5, 0.5,
+      Core::Transform2D::Scaling(
+        (_img_aspect > _vp_aspect) ? (_vp_aspect  / _img_aspect) : 1.0,
+        (_img_aspect > _vp_aspect) ? 1.0                     : (_img_aspect /  _vp_aspect)
+      )
+    )
+  {
+  }
+
+  // Origin distortion
+  inline GtkGui::ImageViewRenderer::OriginDistortionBase::OriginDistortionBase(double _zoom, double _sigma) : zoom(_zoom), sigma(_sigma) {
+  }
+
+  inline Core::Point2D GtkGui::ImageViewRenderer::OriginDistortionBase::t(Core::Point2D input) {
+    double ndist2 = input.x*input.x + input.y*input.y/(sigma*sigma);
+
+    double warp = 1.0 + (zoom-1.0)*exp(-0.5*ndist2);
+
+    return Core::Point2D(
+      input.x*warp,
+      input.y*warp
+    );
+  }
+
+  template <class other>
+  inline GtkGui::ImageViewRenderer::OriginDistortionBase::OriginDistortionBase(other t) : zoom(t.zoom), sigma(t.sigma) {
+  }
+
+  inline GtkGui::ImageViewRenderer::OriginDistortionBase::Inverse GtkGui::ImageViewRenderer::OriginDistortionBase::inverse() {
+    return GtkGui::ImageViewRenderer::OriginDistortionBase::Inverse(this->zoom, this->sigma);
+  }
+
+  // Origin undistortionBase
+  inline GtkGui::ImageViewRenderer::OriginUndistortionBase::OriginUndistortionBase(double _zoom, double _sigma) : zoom(_zoom), sigma(_sigma) {
+  }
+
+  inline Core::Point2D GtkGui::ImageViewRenderer::OriginUndistortionBase::t(Core::Point2D input) {
+    double ndist2 = input.x*input.x + input.y*input.y/(sigma*sigma);
+
+    double warp = 1.0 + (zoom-1.0)*exp(-0.5*ndist2);
+
+    return Core::Point2D(
+      input.x/warp,
+      input.y/warp
+    );
+  }
+
+  template <class other>
+  inline GtkGui::ImageViewRenderer::OriginUndistortionBase::OriginUndistortionBase(other t) : zoom(t.zoom), sigma(t.sigma) {
+  }
+
+  inline GtkGui::ImageViewRenderer::OriginUndistortionBase::Inverse GtkGui::ImageViewRenderer::OriginUndistortionBase::inverse() {
+    return GtkGui::ImageViewRenderer::OriginUndistortionBase::Inverse(zoom, sigma);
+  }
+
+  // DistortionBase anywhere
+  inline GtkGui::ImageViewRenderer::DistortionBase::DistortionBase(double ox, double oy, double zoom, double sigma) :
+    Core::Transform2D::AtOrigin<
+      Core::Transform2D::Transformation<ImageViewRenderer::OriginDistortionBase>
+    > (ox, oy, Core::Transform2D::Transformation<ImageViewRenderer::OriginDistortionBase>(zoom, sigma))
+  {
+  }
+
+  inline GtkGui::ImageViewRenderer::DistortionBase::DistortionBase(Core::Point2D origin, double zoom, double sigma) :
+    Core::Transform2D::AtOrigin<
+      Core::Transform2D::Transformation<
+        OriginDistortionBase
+      >
+    > (origin.x, origin.y, Core::Transform2D::Transformation<ImageViewRenderer::OriginDistortionBase>(zoom, sigma))
+  {
+  }
+
+  // UndistortionBase anywhere
+  inline GtkGui::ImageViewRenderer::UndistortionBase::UndistortionBase(double ox, double oy, double zoom, double sigma) :
+    Core::Transform2D::AtOrigin<
+      Core::Transform2D::Transformation<ImageViewRenderer::OriginUndistortionBase>
+    > (ox, oy, Core::Transform2D::Transformation<ImageViewRenderer::OriginUndistortionBase>(zoom, sigma))
+  {
+  }
+
+  inline GtkGui::ImageViewRenderer::UndistortionBase::UndistortionBase(Core::Point2D origin, double zoom, double sigma) :
+    Core::Transform2D::AtOrigin<
+      Core::Transform2D::Transformation<
+        OriginUndistortionBase
+      >
+    > (origin.x, origin.y, Core::Transform2D::Transformation<ImageViewRenderer::OriginUndistortionBase>(zoom, sigma))
+  {
+  }
+
 }
+
+
+
 
 #endif

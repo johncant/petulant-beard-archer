@@ -34,7 +34,13 @@ double GtkGui::ImageViewController::get_zoom() {
 }
 
 bool GtkGui::ImageViewController::on_motion_notify_event(GdkEventMotion* evt) {
-  std::cout << "Moving! :)" << std::endl;
+  gint w, h;
+
+  gdk_window_get_geometry(evt->window, NULL, NULL, &w, &h, NULL);
+  zoom_center = Core::Point2D(double(evt->x)/double(w), double(evt->y)/double(h));
+
+  renderer->set_zoom_center(zoom_center);
+  gdk_window_invalidate_rect(evt->window, NULL, true);
 }
 
 bool GtkGui::ImageViewController::on_scroll(GdkEventScroll* evt) {
