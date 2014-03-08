@@ -1,6 +1,9 @@
 #ifndef __TRANSFORMATION2D__
 #define __TRANSFORMATION2D__
 
+#include <boost/function.hpp>
+#include <limits>
+
 // Matrixless 2D stackable transformations.
 // Stack them with nonlinear transformations.
 
@@ -60,6 +63,11 @@ namespace Core {
       template <class CA1, class CA2, class CA3, class CA4>
       inline Transformation(CA1 ca1, CA2 ca2, CA3 ca3, CA4 ca4) : backend(ca1, ca2, ca3, ca4) {
       }
+
+      template <class CA1, class CA2, class CA3, class CA4, class CA5>
+      inline Transformation(CA1 ca1, CA2 ca2, CA3 ca3, CA4 ca4, CA5 ca5) : backend(ca1, ca2, ca3, ca4, ca5) {
+      }
+
     };
 
     template <class T1, class T2>
@@ -154,6 +162,74 @@ namespace Core {
 
       inline Inverse inverse() {
         return Inverse(this->t2.tx, this->t2.ty, this->t1.t2.inverse());
+      }
+    };
+
+    template <class tform_type>
+    class BisectionUnscale : public Base {
+      // Finds the inverse of a variable scaling by bisection
+      // Only use if the scaling is monotonically increasing
+      // and has no stationary points.
+
+      public:
+      typedef Transformation<tform_type> Inverse;
+
+      tform_type tform;
+      double precision;
+      boost::function<double(double)> ulim_func;
+      boost::function<double(double)> llim_func;
+      boost::function<double(double)> radial_func;
+
+      inline BisectionUnscale(
+        tform_type _tform,
+        boost::function<double(double)> _llim_func,
+        boost::function<double(double)> _ulim_func,
+        boost::function<double(double)> _radial_func,
+        double _precision
+      ) :
+        tform(_tform),
+        ulim_func(_ulim_func),
+        llim_func(_llim_func),
+        radial_func(_radial_func),
+        precision(_precision) {
+      }
+
+      inline Core::Point2D t(Core::Point2D input) {
+        double dist = sqrt(input.x*input.x + input.y*input.y);
+        double ulim = ulim_func(dist);
+        double llim = llim_func(dist);
+        double ulim_result = radial_func(ulim);
+        double llim_result = radial_func(llim);
+        double test_val = std::numeric_limits<double>::max(),
+               test_result,
+               prev_test_val;
+
+        do {
+          prev_test_val = test_val;
+          test_val = 0.5*(ulim+llim);
+          test_result = radial_func(test_val);
+          if (test_result < dist) {
+            llim = test_val;
+            llim_result = test_result;
+          } else {
+            ulim = test_val;
+            ulim_result = test_result;
+          }
+        } while(fabs(test_val - prev_test_val) > precision);
+
+        double final_result = 0.5*(ulim+llim), final_scale;
+
+        if (fabs(final_result) < precision) {
+          final_scale = 0;
+        } else {
+          final_scale = final_result/dist;
+        }
+
+        return Core::Point2D(input.x*final_scale, input.y*final_scale);
+      }
+
+      inline Inverse inverse() {
+        return tform;
       }
     };
 

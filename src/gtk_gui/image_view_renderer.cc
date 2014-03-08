@@ -3,15 +3,16 @@
 //#include <boost/function.hpp>
 //#include <boost/mpl/if.hpp>
 //#include <boost/mpl/equal.hpp>
-#include <string>
 
 #define GLX_CONTEXT_MAJOR_VERSION_ARB       0x2091
 #define GLX_CONTEXT_MINOR_VERSION_ARB       0x2092
 
+#include <opencv2/opencv.hpp>
+
 // Gave up on operators and templates and used macro
 static void HandleOpenGLError(const char* stmt, const char* fname, int line)
 {
-  GLenum err;
+  GLenum err = GL_NO_ERROR;
   while ((err = glGetError()) != GL_NO_ERROR) {
     std::cout << "OpenGL error " << err << " from function " << stmt << " called from "<< fname << ":" << line << std::endl;
   }
@@ -57,10 +58,10 @@ static const std::string fragment_shader_source = ""
 "\n"
 "void main() {\n"
 "  float distance = length(zoom_center-uv);\n"
-"  float sigma = 0.2;\n"
-"  float local_zoom = 1+(zoom-1)*exp(-0.5*dot(distance/sigma, distance/sigma));\n"
+"  float sigma = 0.2, nd = distance/sigma;\n"
+"  float local_zoom = 1.0+(zoom-1.0)*exp(-0.5*nd*nd);\n"
 "  vec2 distorted_uv = zoom_center + (uv - zoom_center)/local_zoom;\n"
-"  vec4 zoom_heat = vec4(2-local_zoom, local_zoom-1, 0, 1);\n"
+"//  vec4 zoom_heat = vec4(2-local_zoom, local_zoom-1, 0, 1);\n"
 "  vec4 image_col;\n"
 "  if (distorted_uv[0] < 0.0 || distorted_uv[1] < 0.0 || distorted_uv[0] > 1.0 || distorted_uv[1] > 1.0) {\n"
 "    image_col = vec4(0.0, 0.0, 0.0, 1.0);\n"
@@ -68,7 +69,7 @@ static const std::string fragment_shader_source = ""
 "    image_col = texture2D(image, distorted_uv);\n"
 "  }\n"
 "//  gl_FragColor = 0.5*image_col+0.5*zoom_heat;\n"
-"  gl_FragColor = image_col;\n"
+"    gl_FragColor = image_col;\n"
 "//  gl_FragColor = vec4(0.0, 1.0, 1.0, 1.0);\n"
 "}\n";
 
@@ -155,6 +156,11 @@ GtkGui::ImageViewRenderer::ImageViewRenderer(boost::shared_ptr<Core::Image> im) 
   Renderer(),
   image(im),
   pixels(image->pixels()),
+  sprite_pixels(
+    boost::shared_ptr<cv::Mat>(
+      new cv::Mat(cv::imread("/home/john/src/photogrammetry/assets/point.png", CV_LOAD_IMAGE_UNCHANGED))
+    )
+  ),
   vp_height(1),
   vp_width(1),
   gl_tex_id(0),
@@ -163,6 +169,7 @@ GtkGui::ImageViewRenderer::ImageViewRenderer(boost::shared_ptr<Core::Image> im) 
   vertex_shader(0),
   zoom(1.0),
   zoom_center(0.5, 0.5) {
+  
 }
 
 GtkGui::ImageViewRenderer::~ImageViewRenderer() {
@@ -182,6 +189,8 @@ void GtkGui::ImageViewRenderer::realize() {
   GL_CHECK(glDepthFunc(GL_LEQUAL));
   GL_CHECK(glDisable(GL_DITHER));
   GL_CHECK(glShadeModel(GL_FLAT));
+  GL_CHECK(glEnable(GL_BLEND))
+  GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
   // Set up texture - this object can't be created without the image
   GL_CHECK(glGenTextures(1, &gl_tex_id));
@@ -204,6 +213,29 @@ void GtkGui::ImageViewRenderer::realize() {
                         GL_UNSIGNED_BYTE,  // Image data type
                         pixels->ptr()
   ));
+
+  // Set up point sprite texture
+  GL_CHECK(glGenTextures(1, &gl_sprite_tex_id));
+  GL_CHECK(glBindTexture(GL_TEXTURE_2D, gl_sprite_tex_id));
+
+  GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP));
+  GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP));
+  GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+  GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+  // TODO - CONFIG Same as background colour
+
+  //   Assume RGB
+  GL_CHECK(glTexImage2D(GL_TEXTURE_2D,
+                        0,
+                        GL_RGBA,
+                        sprite_pixels->cols,
+                        sprite_pixels->rows,
+                        0,
+                        GL_BGRA,
+                        GL_UNSIGNED_BYTE,  // Image data type
+                        sprite_pixels->ptr()
+  ));
+
 }
 
 void GtkGui::ImageViewRenderer::configure(unsigned int width, unsigned int height) {
@@ -215,11 +247,19 @@ void GtkGui::ImageViewRenderer::configure(unsigned int width, unsigned int heigh
 }
 
 void GtkGui::ImageViewRenderer::draw() {
+  // Background
+  GL_CHECK(glClearColor(0, 0, 0, 1));
+  GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
+  GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));
 
+  draw_image();
+  draw_points();
+}
+
+void GtkGui::ImageViewRenderer::draw_image() {
   GLuint vbo[2], vao[2];
 
   GL_CHECK(glUseProgram(shader_program));
-  GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));
 
   //Tr2::Transformation<ImageToViewport> sp_trans(double(pixels->rows)/double(pixels->cols), vp_height/vp_width);
   Tr2::Transformation<ImageToViewport> sp_trans = get_image_to_viewport_transform();
@@ -272,29 +312,129 @@ void GtkGui::ImageViewRenderer::draw() {
 
   // Zoom params
   GLint zoom_loc, zoom_center_loc;
-  GLfloat zoom = this->zoom;
-  GLfloat zoom_center[2] = {
+  GLfloat im_zoom = this->zoom;
+  GLfloat im_zoom_center[2] = {
     this->zoom_center.x, this->zoom_center.y
   };
 
   GL_CHECK(zoom_loc = glGetUniformLocation(shader_program, "zoom"));
   GL_CHECK(zoom_center_loc = glGetUniformLocation(shader_program, "zoom_center"));
 
-  GL_CHECK(glUniform1fARB(zoom_loc, zoom));
-  GL_CHECK(glUniform2fARB(zoom_center_loc, zoom_center[0], zoom_center[1]));
-
-  // Background
-  GL_CHECK(glClearColor(0, 0, 0, 1));
-  GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
+  GL_CHECK(glUniform1fARB(zoom_loc, im_zoom));
+  GL_CHECK(glUniform2fARB(zoom_center_loc, im_zoom_center[0], im_zoom_center[1]));
 
   // Image
   GL_CHECK(glDrawArrays(GL_QUADS, 0, 4));
 
 }
 
-Core::Point2D GtkGui::ImageViewRenderer::image_position_from_cursor(double x, double y) {
-  // Transform point to image coords
-  return Core::Point2D(x, y);
+void GtkGui::ImageViewRenderer::draw_points() {
+  GLuint vbo[2], vao[2];
+
+  GL_CHECK(glUseProgram(shader_program));
+
+  //Tr2::Transformation<ImageToViewport> sp_trans(double(pixels->rows)/double(pixels->cols), vp_height/vp_width);
+
+//  Tr2::Transformation<
+//    Tr2::CombinationBase<
+//      Distortion,
+//      ImageToViewport
+//    >
+//  > tform(combine(
+//    get_distortion_transform(),
+//    get_image_to_viewport_transform()
+//  ));
+
+//  Tr2::Transformation<ImageToViewport> tform = get_image_to_viewport_transform();
+
+  float positions[8*image->points.size()];
+  float tex_coords[8*image->points.size()];
+
+  double sprite_hw =
+    double(sprite_pixels->cols)/(2.0*vp_width);
+  double sprite_hh =
+    double(sprite_pixels->rows)/(2.0*vp_height);
+
+  std::cout << "width: " << sprite_pixels->cols << ", height: " << sprite_pixels->rows << std::endl;
+  std::cout << "width: " << sprite_hw << ", height: " << sprite_hh << std::endl;
+
+  struct tform_t {
+    GtkGui::ImageViewRenderer &r;
+    tform_t(GtkGui::ImageViewRenderer &_r) : r(_r) {}
+
+    Core::Point2D t(Core::Point2D pt) {
+      return Tr2::combine(
+        r.get_distortion_transform().inverse(),
+        r.get_image_to_viewport_transform()
+      ).t(pt);
+    }
+  };
+
+  tform_t tform(*this);
+
+  for(int i=0; i<image->points.size(); i++) {
+    positions[8*i+0] = tform.t(image->points[i]).x-sprite_hw;
+    positions[8*i+1] = tform.t(image->points[i]).y-sprite_hh;
+    positions[8*i+2] = tform.t(image->points[i]).x-sprite_hw;
+    positions[8*i+3] = tform.t(image->points[i]).y+sprite_hh;
+    positions[8*i+4] = tform.t(image->points[i]).x+sprite_hw;
+    positions[8*i+5] = tform.t(image->points[i]).y+sprite_hh;
+    positions[8*i+6] = tform.t(image->points[i]).x+sprite_hw;
+    positions[8*i+7] = tform.t(image->points[i]).y-sprite_hh;
+
+    tex_coords[8*i+0] = 0.0;
+    tex_coords[8*i+1] = 0.0;
+    tex_coords[8*i+2] = 0.0;
+    tex_coords[8*i+3] = 1.0;
+    tex_coords[8*i+4] = 1.0;
+    tex_coords[8*i+5] = 1.0;
+    tex_coords[8*i+6] = 1.0;
+    tex_coords[8*i+7] = 0.0;
+  }
+
+  // Generate buffers
+  GL_CHECK(glGenBuffers(2, vbo));
+  GL_CHECK(glGenVertexArrays(2, vao));
+
+  // Set vertex position data
+  GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, vbo[0]));
+  GL_CHECK(glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(GLfloat)*image->points.size(), positions, GL_STATIC_DRAW));
+  GL_CHECK(glBindVertexArray(vao[0]));
+
+  GL_CHECK(glEnableVertexAttribArray(0));
+  GL_CHECK(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0));
+
+  // Set vertex texture data
+  GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, vbo[1]));
+  GL_CHECK(glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(GLfloat)*image->points.size(), tex_coords, GL_STATIC_DRAW));
+
+  GL_CHECK(glEnableVertexAttribArray(1));
+  GL_CHECK(glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, 0));
+
+  // Texture
+  GLint pt_img_loc;
+  GL_CHECK(pt_img_loc = glGetUniformLocation(shader_program, "image"));
+  GL_CHECK(glActiveTextureARB(GL_TEXTURE0));
+  GL_CHECK(glBindTexture(GL_TEXTURE_2D, gl_sprite_tex_id));
+  GL_CHECK(glEnable(GL_TEXTURE_2D));
+  GL_CHECK(glUniform1iARB(pt_img_loc, 0));
+
+  // Zoom params
+  GLint zoom_loc, zoom_center_loc;
+  GLfloat sp_zoom = 1.0;
+  GLfloat sp_zoom_center[2] = {
+    this->zoom_center.x, this->zoom_center.y
+  };
+
+  GL_CHECK(zoom_loc = glGetUniformLocation(shader_program, "zoom"));
+  GL_CHECK(zoom_center_loc = glGetUniformLocation(shader_program, "zoom_center"));
+
+  GL_CHECK(glUniform1fARB(zoom_loc, sp_zoom));
+  GL_CHECK(glUniform2fARB(zoom_center_loc, sp_zoom_center[0], sp_zoom_center[1]));
+
+  // Image
+  GL_CHECK(glDrawArrays(GL_QUADS, 0, 4*image->points.size()));
+
 }
 
 void GtkGui::ImageViewRenderer::set_zoom(double _zoom) {
@@ -310,11 +450,16 @@ GtkGui::ImageViewRenderer::ImageToViewport GtkGui::ImageViewRenderer::get_image_
 }
 
 void GtkGui::ImageViewRenderer::set_zoom_center(Core::Point2D _zoom_center) {
-
-  zoom_center = Tr2::combine(
-    get_distortion_transform(),
-    get_image_to_viewport_transform()
-  ).inverse().t(_zoom_center);
-
+  zoom_center = get_image_to_viewport_transform().inverse().t(_zoom_center);
 }
 
+Core::Point2D GtkGui::ImageViewRenderer::as_image_coords(Core::Point2D pt) {
+  // Fwd transform defined as
+  // Position in image part of viewport -> position on actual image
+  //
+  // Our question is, for a point on the image display space, 
+  return Tr2::combine(
+    get_image_to_viewport_transform().inverse(),
+    get_distortion_transform()
+  ).t(pt);
+}

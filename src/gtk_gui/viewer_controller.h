@@ -10,9 +10,9 @@ namespace GtkGui {
     public:
     ViewerController();
     ~ViewerController();
-    virtual void draw() = 0;
-    virtual void configure(unsigned int width, unsigned int height) = 0;
-    virtual void realize() = 0;
+    virtual void draw(GdkWindow *window) = 0;
+    virtual void configure(unsigned int width, unsigned int height, GdkWindow *window) = 0;
+    virtual void realize(GdkWindow *window) = 0;
   };
 }
 

@@ -11,6 +11,7 @@ namespace GtkGui {
   class ImageViewController : public ViewerController {
     double zoom_level;
     Core::Point2D zoom_center;
+    GdkCursor *cursor_crosshair;
 
     protected:
     boost::shared_ptr<GtkGui::ImageViewRenderer> renderer;
@@ -20,12 +21,15 @@ namespace GtkGui {
     ImageViewController(boost::shared_ptr<Core::Image> im);
     ~ImageViewController();
 
-    void draw();
-    void configure(unsigned int width, unsigned int height);
-    void realize();
+    void draw(GdkWindow *window);
+    void configure(unsigned int width, unsigned int height, GdkWindow *window);
+    void realize(GdkWindow *window);
     double get_zoom();
     bool on_motion_notify_event(GdkEventMotion* evt);
+    bool on_enter_notify_event(GdkEventCrossing* evt);
+    bool on_leave_notify_event(GdkEventCrossing* evt);
     bool on_scroll(GdkEventScroll* evt);
+    bool on_button_press_event(GdkEventButton* evt);
   };
 }
 

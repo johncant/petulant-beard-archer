@@ -103,6 +103,13 @@ void GtkGui::Viewer::on_realize2() {
 
   // Hack to bind signal
 
+  this->signal_button_press_event().connect(
+    sigc::mem_fun(
+      *boost::static_pointer_cast<GtkGui::ImageViewController>(controller),
+      &GtkGui::ImageViewController::on_button_press_event
+    )
+  );
+
   this->signal_motion_notify_event().connect(
     sigc::mem_fun(
       *boost::static_pointer_cast<GtkGui::ImageViewController>(controller),
@@ -119,7 +126,7 @@ void GtkGui::Viewer::on_realize2() {
 
   if (glXMakeCurrent(display, id, impl.context) == TRUE) {
     std::cout << "context " << impl.context << std::endl;
-    controller->realize();
+    controller->realize(window);
   }
 
 }
@@ -145,7 +152,7 @@ bool GtkGui::Viewer::on_configure2(GdkEventConfigure* const&) {
 
     if (glXMakeCurrent(display, id, impl.context) == TRUE) {
       gtk_widget_get_allocation(GTK_WIDGET(this->gobj()), &allocation);
-      controller->configure(allocation.width, allocation.height);
+      controller->configure(allocation.width, allocation.height, window);
     }
 
   }
@@ -174,7 +181,7 @@ bool GtkGui::Viewer::on_expose1() {
     id = gdk_x11_window_get_xid(window);
 
     if (glXMakeCurrent(display, id, impl.context) == TRUE) {
-      controller->draw();
+      controller->draw(window);
       glXSwapBuffers(display, id);
     }
   }
