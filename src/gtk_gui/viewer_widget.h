@@ -2,18 +2,21 @@
 #define __GTK_GUI_VIEWER_H__
 
 #include <gtkmm/drawingarea.h>
+#include <gtkmm/builder.h>
 #include <gtk/gtk.h>
+
+// This can go - TODO - move Controller into impl
 #include <stdlib.h>
 #include <boost/shared_ptr.hpp>
 
 #include "gtk_gui.h"
-#include "renderer.h"
-#include "viewer_controller.h"
+#include "viewer/renderer.h"
+#include "viewer/controller.h"
 
 namespace GtkGui {
-  class ViewerImpl;
+  class ViewerWidgetImpl;
 
-  class Viewer : public Gtk::DrawingArea {
+  class ViewerWidget : public Gtk::DrawingArea {
 
     // This class doesn't use GtkGlExt or GtkGlarea since they don't support GTK+-3.0.
     // Leaks memory like your grandmother.
@@ -22,9 +25,9 @@ namespace GtkGui {
 
     public:
 
-    ~Viewer();
-    Viewer(GtkDrawingArea *gobj, Glib::RefPtr<Gtk::Builder> builder);
-    Viewer();
+    ~ViewerWidget();
+    ViewerWidget(GtkDrawingArea *gobj, Glib::RefPtr<Gtk::Builder> builder);
+    ViewerWidget();
 
     void on_realize2();
     bool on_configure2(GdkEventConfigure* const&);
@@ -33,8 +36,8 @@ namespace GtkGui {
     bool on_expose1();
 
     private:
-    GtkGui::ViewerImpl& impl;
-    boost::shared_ptr<GtkGui::ViewerController> controller;
+    GtkGui::ViewerWidgetImpl& impl;
+    boost::shared_ptr<GtkGui::Viewer::Controller> controller;
   };
 }
 

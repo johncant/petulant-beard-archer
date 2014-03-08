@@ -1,15 +1,19 @@
-#include "image_view_renderer.h"
-//#include <boost/phoenix.hpp>
-//#include <boost/function.hpp>
-//#include <boost/mpl/if.hpp>
-//#include <boost/mpl/equal.hpp>
-
-#define GLX_CONTEXT_MAJOR_VERSION_ARB       0x2091
-#define GLX_CONTEXT_MINOR_VERSION_ARB       0x2092
-
+#include "renderer.h"
 #include <opencv2/opencv.hpp>
 
-// Gave up on operators and templates and used macro
+// External names
+using Core::Image;
+using Core::Point2D;
+
+namespace TF {
+  using namespace Core::Transform2D;
+  using namespace GtkGui::Viewer::ImageView::Transforms;
+};
+
+// Get in context
+namespace GtkGui { namespace Viewer { namespace ImageView {
+
+// Opengl Helpers
 static void HandleOpenGLError(const char* stmt, const char* fname, int line)
 {
   GLenum err = GL_NO_ERROR;
@@ -20,6 +24,7 @@ static void HandleOpenGLError(const char* stmt, const char* fname, int line)
 
 #define GL_CHECK(stmt) stmt; HandleOpenGLError(#stmt, __FILE__, __LINE__);
 
+// Shaders
 const std::string vertex_shader_source = ""
 "#version 130\n"
 "\n"
@@ -73,15 +78,13 @@ static const std::string fragment_shader_source = ""
 "//  gl_FragColor = vec4(0.0, 1.0, 1.0, 1.0);\n"
 "}\n";
 
-namespace Tr2 = Core::Transform2D;
-
-// Renderer
-GLuint GtkGui::ImageViewRenderer::compile(const std::string& source, GLenum type) {
+// Renderer impl
+GLuint Renderer::compile(const std::string& source, GLenum type) {
   const GLchar* c_source = source.c_str();
   return compile(c_source, type);
 }
 
-GLuint GtkGui::ImageViewRenderer::compile(const char* c_source, GLenum type) {
+GLuint Renderer::compile(const char* c_source, GLenum type) {
   GLuint shader;
   GL_CHECK(shader = glCreateShader(type));
 
@@ -105,7 +108,7 @@ GLuint GtkGui::ImageViewRenderer::compile(const char* c_source, GLenum type) {
   return shader;
 }
 
-void GtkGui::ImageViewRenderer::init_shaders() {
+void Renderer::init_shaders() {
   std::cout << "OpenGL version is: " << glGetString(GL_VERSION) << std::endl;
   std::cout << "Shading language version: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
 
@@ -152,8 +155,8 @@ void GtkGui::ImageViewRenderer::init_shaders() {
 
 }
 
-GtkGui::ImageViewRenderer::ImageViewRenderer(boost::shared_ptr<Core::Image> im) :
-  Renderer(),
+Renderer::Renderer(boost::shared_ptr<Core::Image> im) :
+  GtkGui::Viewer::Renderer(),
   image(im),
   pixels(image->pixels()),
   sprite_pixels(
@@ -172,14 +175,14 @@ GtkGui::ImageViewRenderer::ImageViewRenderer(boost::shared_ptr<Core::Image> im) 
   
 }
 
-GtkGui::ImageViewRenderer::~ImageViewRenderer() {
+Renderer::~Renderer() {
   if (gl_tex_id) {
     GL_CHECK(glDeleteTextures(1, &gl_tex_id));
     // TODO
   }
 }
 
-void GtkGui::ImageViewRenderer::realize() {
+void Renderer::realize() {
 
   // Set up shaders
   init_shaders();
@@ -238,7 +241,7 @@ void GtkGui::ImageViewRenderer::realize() {
 
 }
 
-void GtkGui::ImageViewRenderer::configure(unsigned int width, unsigned int height) {
+void Renderer::configure(unsigned int width, unsigned int height) {
 
   vp_width = double(width);
   vp_height = double(height);
@@ -246,7 +249,7 @@ void GtkGui::ImageViewRenderer::configure(unsigned int width, unsigned int heigh
 
 }
 
-void GtkGui::ImageViewRenderer::draw() {
+void Renderer::draw() {
   // Background
   GL_CHECK(glClearColor(0, 0, 0, 1));
   GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
@@ -256,18 +259,18 @@ void GtkGui::ImageViewRenderer::draw() {
   draw_points();
 }
 
-void GtkGui::ImageViewRenderer::draw_image() {
+void Renderer::draw_image() {
   GLuint vbo[2], vao[2];
 
   GL_CHECK(glUseProgram(shader_program));
 
-  //Tr2::Transformation<ImageToViewport> sp_trans(double(pixels->rows)/double(pixels->cols), vp_height/vp_width);
-  Tr2::Transformation<ImageToViewport> sp_trans = get_image_to_viewport_transform();
+  //TF::Transform<ImageToViewport> sp_trans(double(pixels->rows)/double(pixels->cols), vp_height/vp_width);
+  TF::ImageToViewport sp_trans = get_image_to_viewport_transform();
 
-  Core::Point2D p1 = sp_trans.t(0.0, 0.0);
-  Core::Point2D p2 = sp_trans.t(0.0, 1.0);
-  Core::Point2D p3 = sp_trans.t(1.0, 1.0);
-  Core::Point2D p4 = sp_trans.t(1.0, 0.0);
+  Point2D p1 = sp_trans.t(0.0, 0.0);
+  Point2D p2 = sp_trans.t(0.0, 1.0);
+  Point2D p3 = sp_trans.t(1.0, 1.0);
+  Point2D p4 = sp_trans.t(1.0, 0.0);
 
   const float positions[] = {
     p1.x, p1.y,
@@ -328,24 +331,10 @@ void GtkGui::ImageViewRenderer::draw_image() {
 
 }
 
-void GtkGui::ImageViewRenderer::draw_points() {
+void Renderer::draw_points() {
   GLuint vbo[2], vao[2];
 
   GL_CHECK(glUseProgram(shader_program));
-
-  //Tr2::Transformation<ImageToViewport> sp_trans(double(pixels->rows)/double(pixels->cols), vp_height/vp_width);
-
-//  Tr2::Transformation<
-//    Tr2::CombinationBase<
-//      Distortion,
-//      ImageToViewport
-//    >
-//  > tform(combine(
-//    get_distortion_transform(),
-//    get_image_to_viewport_transform()
-//  ));
-
-//  Tr2::Transformation<ImageToViewport> tform = get_image_to_viewport_transform();
 
   float positions[8*image->points.size()];
   float tex_coords[8*image->points.size()];
@@ -358,19 +347,13 @@ void GtkGui::ImageViewRenderer::draw_points() {
   std::cout << "width: " << sprite_pixels->cols << ", height: " << sprite_pixels->rows << std::endl;
   std::cout << "width: " << sprite_hw << ", height: " << sprite_hh << std::endl;
 
-  struct tform_t {
-    GtkGui::ImageViewRenderer &r;
-    tform_t(GtkGui::ImageViewRenderer &_r) : r(_r) {}
-
-    Core::Point2D t(Core::Point2D pt) {
-      return Tr2::combine(
-        r.get_distortion_transform().inverse(),
-        r.get_image_to_viewport_transform()
-      ).t(pt);
-    }
-  };
-
-  tform_t tform(*this);
+  TF::Combination<
+    TF::Distortion::Inverse,
+    TF::ImageToViewport
+  >::type tform(
+    get_distortion_transform().inverse(),
+    get_image_to_viewport_transform()
+  );
 
   for(int i=0; i<image->points.size(); i++) {
     positions[8*i+0] = tform.t(image->points[i]).x-sprite_hw;
@@ -437,29 +420,32 @@ void GtkGui::ImageViewRenderer::draw_points() {
 
 }
 
-void GtkGui::ImageViewRenderer::set_zoom(double _zoom) {
+// Accessors
+void Renderer::set_zoom(double _zoom) {
   zoom = _zoom;
 }
 
-GtkGui::ImageViewRenderer::Distortion GtkGui::ImageViewRenderer::get_distortion_transform() {
-  return GtkGui::ImageViewRenderer::Distortion(zoom_center, zoom, 0.2);
+TF::ImageToViewport Renderer::get_image_to_viewport_transform() {
+  return TF::ImageToViewport(double(pixels->rows)/double(pixels->cols), vp_height/vp_width);
 }
 
-GtkGui::ImageViewRenderer::ImageToViewport GtkGui::ImageViewRenderer::get_image_to_viewport_transform() {
-  return GtkGui::ImageViewRenderer::ImageToViewport(double(pixels->rows)/double(pixels->cols), vp_height/vp_width);
+TF::Distortion Renderer::get_distortion_transform() {
+  return TF::Distortion(zoom_center, zoom, 0.2);
 }
 
-void GtkGui::ImageViewRenderer::set_zoom_center(Core::Point2D _zoom_center) {
+void Renderer::set_zoom_center(Point2D _zoom_center) {
   zoom_center = get_image_to_viewport_transform().inverse().t(_zoom_center);
 }
 
-Core::Point2D GtkGui::ImageViewRenderer::as_image_coords(Core::Point2D pt) {
+Point2D Renderer::as_image_coords(Point2D pt) {
   // Fwd transform defined as
   // Position in image part of viewport -> position on actual image
   //
   // Our question is, for a point on the image display space, 
-  return Tr2::combine(
+  return TF::combine(
     get_image_to_viewport_transform().inverse(),
     get_distortion_transform()
   ).t(pt);
 }
+
+}}}

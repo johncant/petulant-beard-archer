@@ -1,55 +1,69 @@
-#include "image_view_controller.h"
+#include "controller.h"
 #include "boost/algorithm/clamp.hpp"
 
 using boost::algorithm::clamp;
+using namespace Core;
+
+namespace GtkGui { namespace Viewer { namespace ImageView {
 
 // Helper
 template <class event>
-static Core::Point2D point_from_event(event* e) {
+static Point2D point_from_event(event* e) {
   gint w, h;
 
   gdk_window_get_geometry(e->window, NULL, NULL, &w, &h, NULL);
 
-  return Core::Point2D(double(e->x)/double(w), double(e->y)/double(h));
+  return Point2D(double(e->x)/double(w), double(e->y)/double(h));
 }
 
+
+
+
+
+
 // Impl
-GtkGui::ImageViewController::ImageViewController(boost::shared_ptr<Core::Image> im) :
+
+// *structors
+Controller::Controller(boost::shared_ptr<Image> im) :
   image(im),
-  renderer(boost::shared_ptr<GtkGui::ImageViewRenderer>(new GtkGui::ImageViewRenderer(im))),
+  renderer(boost::shared_ptr<Renderer>(new Renderer(im))),
   zoom_level(0),
   zoom_center(0.5, 0.5)
 {
   cursor_crosshair = gdk_cursor_new(GDK_CROSSHAIR);
 }
 
-GtkGui::ImageViewController::~ImageViewController() {
+Controller::~Controller() {
   g_object_unref(cursor_crosshair);
 }
 
-void GtkGui::ImageViewController::realize(GdkWindow* window) {
-  renderer->realize();
-  gdk_window_set_cursor(window, cursor_crosshair);
-}
+// Accessors
 
-void GtkGui::ImageViewController::configure(unsigned int width, unsigned int height, GdkWindow *window) {
-  renderer->configure(width, height);
-}
-
-void GtkGui::ImageViewController::draw(GdkWindow *window) {
-  renderer->draw();
-}
-
-double GtkGui::ImageViewController::get_zoom() {
+double Controller::get_zoom() {
   // TODO - CONFIG
   double z = exp(zoom_level*log(20.0));
   std::cout << "Zooming to " << z << std::endl;
   return z;
 }
 
-bool GtkGui::ImageViewController::on_button_press_event(GdkEventButton* evt) {
+// Events that come from Viewer
+void Controller::realize(GdkWindow* window) {
+  renderer->realize();
+  gdk_window_set_cursor(window, cursor_crosshair);
+}
 
-  Core::Point2D pos = point_from_event(evt);
+void Controller::configure(unsigned int width, unsigned int height, GdkWindow *window) {
+  renderer->configure(width, height);
+}
+
+void Controller::draw(GdkWindow *window) {
+  renderer->draw();
+}
+
+
+bool Controller::on_button_press_event(GdkEventButton* evt) {
+
+  Point2D pos = point_from_event(evt);
 
   if (evt->button == 1 && (evt->state & GDK_SHIFT_MASK)) {
     // TODO - box select and include selected points
@@ -67,20 +81,14 @@ bool GtkGui::ImageViewController::on_button_press_event(GdkEventButton* evt) {
 //  widget->signal_button_release_event()
 }
 
-bool GtkGui::ImageViewController::on_motion_notify_event(GdkEventMotion* evt) {
+bool Controller::on_motion_notify_event(GdkEventMotion* evt) {
   zoom_center = point_from_event(evt);
   renderer->set_zoom_center(zoom_center);
 
   gdk_window_invalidate_rect(evt->window, NULL, true);
 }
 
-bool GtkGui::ImageViewController::on_enter_notify_event(GdkEventCrossing* evt) {
-}
-
-bool GtkGui::ImageViewController::on_leave_notify_event(GdkEventCrossing* evt) {
-}
-
-bool GtkGui::ImageViewController::on_scroll(GdkEventScroll* evt) {
+bool Controller::on_scroll(GdkEventScroll* evt) {
   // TODO - CONFIG
   double increment = 0.1;
 
@@ -101,3 +109,4 @@ bool GtkGui::ImageViewController::on_scroll(GdkEventScroll* evt) {
   return true;
 }
 
+}}}

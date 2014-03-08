@@ -1,17 +1,17 @@
-#include "viewer.h"
-#include "image_view_controller.h"
+#include "viewer_widget.h"
+#include "viewer/image_view/controller.h"
 #include <GL/gl.h>
 #include <GL/glx.h>
 #include <gdk/gdkx.h>
 
 namespace GtkGui {
-  class ViewerImpl {
-    friend class GtkGui::Viewer;
+  class ViewerWidgetImpl {
+    friend class GtkGui::ViewerWidget;
     GLXContext context;
     Colormap xcolormap;
     XVisualInfo *xvisual;
     GdkVisual *visual;
-    ViewerImpl() :
+    ViewerWidgetImpl() :
       xvisual(0),
       visual(0)
     { }
@@ -34,7 +34,7 @@ static boost::shared_ptr<Core::Image> test_image() {
 #endif
 
 
-GtkGui::Viewer::~Viewer() {
+GtkGui::ViewerWidget::~ViewerWidget() {
   GdkWindow *window = gtk_widget_get_window(GTK_WIDGET(this->gobj()));
   Display *display = gdk_x11_display_get_xdisplay(gdk_window_get_display(window));
 
@@ -46,20 +46,20 @@ GtkGui::Viewer::~Viewer() {
   delete &impl;
 }
 
-GtkGui::Viewer::Viewer(GtkDrawingArea *gobj, Glib::RefPtr<Gtk::Builder> builder) :
+GtkGui::ViewerWidget::ViewerWidget(GtkDrawingArea *gobj, Glib::RefPtr<Gtk::Builder> builder) :
   Gtk::DrawingArea(gobj),
-  impl(*new GtkGui::ViewerImpl()),
-  controller(new GtkGui::ImageViewController(test_image()))
+  impl(*new GtkGui::ViewerWidgetImpl()),
+  controller(new GtkGui::Viewer::ImageView::Controller(test_image()))
 {
   this->set_events(Gdk::ALL_EVENTS_MASK);
 }
 
-GtkGui::Viewer::Viewer() :
-  impl(*new GtkGui::ViewerImpl()),
-  controller(new GtkGui::ImageViewController(test_image())) {
+GtkGui::ViewerWidget::ViewerWidget() :
+  impl(*new GtkGui::ViewerWidgetImpl()),
+  controller(new GtkGui::Viewer::ImageView::Controller(test_image())) {
 }
 
-void GtkGui::Viewer::on_realize2() {
+void GtkGui::ViewerWidget::on_realize2() {
   //Gtk::DrawingAreaon_realize(this);
   GtkWidget *root_window;
   GdkWindow *window;
@@ -105,22 +105,22 @@ void GtkGui::Viewer::on_realize2() {
 
   this->signal_button_press_event().connect(
     sigc::mem_fun(
-      *boost::static_pointer_cast<GtkGui::ImageViewController>(controller),
-      &GtkGui::ImageViewController::on_button_press_event
+      *boost::static_pointer_cast<GtkGui::Viewer::ImageView::Controller>(controller),
+      &GtkGui::Viewer::ImageView::Controller::on_button_press_event
     )
   );
 
   this->signal_motion_notify_event().connect(
     sigc::mem_fun(
-      *boost::static_pointer_cast<GtkGui::ImageViewController>(controller),
-      &GtkGui::ImageViewController::on_motion_notify_event
+      *boost::static_pointer_cast<GtkGui::Viewer::ImageView::Controller>(controller),
+      &GtkGui::Viewer::ImageView::Controller::on_motion_notify_event
     )
   );
 
   this->signal_scroll_event().connect(
     sigc::mem_fun(
-      *boost::static_pointer_cast<GtkGui::ImageViewController>(controller),
-      &GtkGui::ImageViewController::on_scroll
+      *boost::static_pointer_cast<GtkGui::Viewer::ImageView::Controller>(controller),
+      &GtkGui::Viewer::ImageView::Controller::on_scroll
     )
   );
 
@@ -133,7 +133,7 @@ void GtkGui::Viewer::on_realize2() {
 
 
 
-bool GtkGui::Viewer::on_configure2(GdkEventConfigure* const&) {
+bool GtkGui::ViewerWidget::on_configure2(GdkEventConfigure* const&) {
 
   GtkAllocation allocation;
   GdkWindow *window;
@@ -160,15 +160,15 @@ bool GtkGui::Viewer::on_configure2(GdkEventConfigure* const&) {
 }
 
 // Compatability wrappers
-bool GtkGui::Viewer::on_expose_gtk2(GdkEventExpose* evt) {
+bool GtkGui::ViewerWidget::on_expose_gtk2(GdkEventExpose* evt) {
   return on_expose1();
 }
 
-bool GtkGui::Viewer::on_expose_gtk3(const Cairo::RefPtr<Cairo::Context>&) {
+bool GtkGui::ViewerWidget::on_expose_gtk3(const Cairo::RefPtr<Cairo::Context>&) {
   return on_expose1();
 }
 
-bool GtkGui::Viewer::on_expose1() {
+bool GtkGui::ViewerWidget::on_expose1() {
   GdkWindow *window;
   Display *display;
   int id;

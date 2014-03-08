@@ -2,11 +2,14 @@
 
 #include <GL/gl.h>
 
-GtkGui::BlankRenderer::BlankRenderer() { }
+namespace GtkGui { namespace Viewer {
 
-GtkGui::BlankRenderer::~BlankRenderer() {}
 
-void GtkGui::BlankRenderer::realize() {
+BlankRenderer::BlankRenderer() { }
+
+BlankRenderer::~BlankRenderer() {}
+
+void BlankRenderer::realize() {
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LEQUAL);
   glEnable(GL_CULL_FACE);
@@ -15,11 +18,11 @@ void GtkGui::BlankRenderer::realize() {
   glShadeModel(GL_SMOOTH);
 }
 
-void GtkGui::BlankRenderer::configure(unsigned int width, unsigned int height) {
+void BlankRenderer::configure(unsigned int width, unsigned int height) {
   glViewport(0, 0, width, height);
 }
 
-void GtkGui::BlankRenderer::draw() {
+void BlankRenderer::draw() {
   glClear(GL_DEPTH_BUFFER_BIT);
 
   glMatrixMode(GL_PROJECTION);
@@ -40,3 +43,5 @@ void GtkGui::BlankRenderer::draw() {
   glEnd();
 }
 
+
+}}

@@ -6,12 +6,12 @@ photogrammetry_SOURCES = \
 												 src/main.cc \
 												 src/gtk_gui/gtk_gui.cc \
 												 src/gtk_gui/photogrammetry_window.cc \
-												 src/gtk_gui/viewer.cc \
-												 src/gtk_gui/viewer_controller.cc \
-												 src/gtk_gui/image_view_controller.cc \
-												 src/gtk_gui/blank_renderer.cc \
-												 src/gtk_gui/image_view_renderer.cc \
-												 src/gtk_gui/renderer.cc \
+												 src/gtk_gui/viewer_widget.cc \
+												 src/gtk_gui/viewer/controller.cc \
+												 src/gtk_gui/viewer/renderer.cc \
+												 src/gtk_gui/viewer/image_view/controller.cc \
+												 src/gtk_gui/viewer/image_view/renderer.cc \
+												 src/gtk_gui/viewer/blank_renderer.cc \
 												 src/importers/base.cc \
 												 src/importers/insight3d.cc
 
