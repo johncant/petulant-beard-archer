@@ -61,7 +61,7 @@ namespace Importer { namespace Insight3dImporter {
 
     // Parse file name char
     static qi::rule<iterator_type, char()> file_name_char =
-      char_("A-Za-z_0-9-_.") | lit("\\ ");
+      char_("A-Za-z_0-9-_.") | qi::string("\\ ");
 
 
     // Parse file name
@@ -71,7 +71,7 @@ namespace Importer { namespace Insight3dImporter {
 
     // Parse path
     static qi::rule<iterator_type, std::string()> path =
-      repeat[lit("/") >> file_name];
+      repeat[qi::string("/") >> file_name];
 
 
     // Parse 3d vertices (but really, ignore them.)
