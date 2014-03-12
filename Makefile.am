@@ -6,6 +6,7 @@ photogrammetry_SOURCES = \
 												 src/main.cc \
 												 src/gtk_gui/gtk_gui.cc \
 												 src/gtk_gui/photogrammetry_window.cc \
+												 src/gtk_gui/image_chooser.cc \
 												 src/gtk_gui/viewer_widget.cc \
 												 src/gtk_gui/viewer/controller.cc \
 												 src/gtk_gui/viewer/renderer.cc \

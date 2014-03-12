@@ -133,6 +133,7 @@ namespace Importer { namespace Insight3dImporter {
 
       // File name
       file_name[
+        bind(&Core::Image::name, *local::_a) = construct<std::string>(qi::_1),
         ref(std::cout) << qi::_1 << std::endl
       ] >>
 

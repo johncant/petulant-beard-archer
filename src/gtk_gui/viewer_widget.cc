@@ -19,14 +19,6 @@ namespace GtkGui {
 }
 
 
-// TODO - remove me. I am for testing only:
-#include "../core/image.h"
-static boost::shared_ptr<Core::Image> test_image() {
-  boost::shared_ptr<Core::Image> img(new Core::Image());
-  img->path = "test.jpg";
-  return img;
-}
-
 // Method called on GdkDrawable in 2.x and GdkWindow in 3.x
 #if !GTK_CHECK_VERSION(3,0,0)
   #warning "Does opencv support GTK3 yet?"
@@ -48,15 +40,14 @@ GtkGui::ViewerWidget::~ViewerWidget() {
 
 GtkGui::ViewerWidget::ViewerWidget(GtkDrawingArea *gobj, Glib::RefPtr<Gtk::Builder> builder) :
   Gtk::DrawingArea(gobj),
-  impl(*new GtkGui::ViewerWidgetImpl()),
-  controller(new GtkGui::Viewer::ImageView::Controller(test_image()))
+  impl(*new GtkGui::ViewerWidgetImpl())
 {
   this->set_events(Gdk::ALL_EVENTS_MASK);
 }
 
 GtkGui::ViewerWidget::ViewerWidget() :
-  impl(*new GtkGui::ViewerWidgetImpl()),
-  controller(new GtkGui::Viewer::ImageView::Controller(test_image())) {
+  impl(*new GtkGui::ViewerWidgetImpl())
+{
 }
 
 void GtkGui::ViewerWidget::on_realize2() {
@@ -101,30 +92,7 @@ void GtkGui::ViewerWidget::on_realize2() {
 
   gtk_widget_set_size_request(GTK_WIDGET(this->gobj()), 100, 100);
 
-  // Hack to bind signal
-
-  this->signal_button_press_event().connect(
-    sigc::mem_fun(
-      *boost::static_pointer_cast<GtkGui::Viewer::ImageView::Controller>(controller),
-      &GtkGui::Viewer::ImageView::Controller::on_button_press_event
-    )
-  );
-
-  this->signal_motion_notify_event().connect(
-    sigc::mem_fun(
-      *boost::static_pointer_cast<GtkGui::Viewer::ImageView::Controller>(controller),
-      &GtkGui::Viewer::ImageView::Controller::on_motion_notify_event
-    )
-  );
-
-  this->signal_scroll_event().connect(
-    sigc::mem_fun(
-      *boost::static_pointer_cast<GtkGui::Viewer::ImageView::Controller>(controller),
-      &GtkGui::Viewer::ImageView::Controller::on_scroll
-    )
-  );
-
-  if (glXMakeCurrent(display, id, impl.context) == TRUE) {
+  if (controller && glXMakeCurrent(display, id, impl.context) == TRUE) {
     std::cout << "context " << impl.context << std::endl;
     controller->realize(window);
   }
@@ -143,7 +111,7 @@ bool GtkGui::ViewerWidget::on_configure2(GdkEventConfigure* const&) {
   std::cout << "configure event" << std::endl;
   std::cout << "visual" << impl.visual << std::endl;
 
-  if (impl.visual) {
+  if (controller && impl.visual) {
 
     window = gtk_widget_get_window(GTK_WIDGET(this->gobj()));
     display = gdk_x11_display_get_xdisplay(gdk_window_get_display(window));
@@ -174,7 +142,7 @@ bool GtkGui::ViewerWidget::on_expose1() {
   int id;
 
   std::cout << "expose event" << std::endl;
-  if (impl.visual) {
+  if (controller && impl.visual) {
     window = gtk_widget_get_window(GTK_WIDGET(this->gobj()));
     display = gdk_x11_display_get_xdisplay(gdk_window_get_display(window));
 

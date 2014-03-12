@@ -2,6 +2,7 @@
 #define __IMAGE_VIEW_CONTROLLER_H__
 
 #include <boost/shared_ptr.hpp>
+#include <gtkmm/widget.h>
 #include "../controller.h"
 #include "../renderer.h"
 #include "renderer.h"
@@ -21,8 +22,9 @@ namespace GtkGui {
         boost::shared_ptr<GtkGui::Viewer::ImageView::Renderer> renderer;
         boost::shared_ptr<Core::Image> image;
 
+        void connect_signal_handlers(Gtk::Widget &parent);
         public:
-        Controller(boost::shared_ptr<Core::Image> im);
+        Controller(Gtk::Widget &parent, boost::shared_ptr<Core::Image> im);
         ~Controller();
 
         void draw(GdkWindow *window);

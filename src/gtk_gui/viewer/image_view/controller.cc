@@ -24,13 +24,39 @@ static Point2D point_from_event(event* e) {
 // Impl
 
 // *structors
-Controller::Controller(boost::shared_ptr<Image> im) :
-  image(im),
+Controller::Controller(Gtk::Widget& parent, boost::shared_ptr<Image> im) :
+  image(image),
   renderer(boost::shared_ptr<Renderer>(new Renderer(im))),
   zoom_level(0),
   zoom_center(0.5, 0.5)
 {
   cursor_crosshair = gdk_cursor_new(GDK_CROSSHAIR);
+  connect_signal_handlers(parent);
+}
+
+void Controller::connect_signal_handlers(Gtk::Widget &parent) {
+
+  parent.signal_button_press_event().connect(
+    sigc::mem_fun(
+      *this,
+      &GtkGui::Viewer::ImageView::Controller::on_button_press_event
+    )
+  );
+
+  parent.signal_motion_notify_event().connect(
+    sigc::mem_fun(
+      *this,
+      &GtkGui::Viewer::ImageView::Controller::on_motion_notify_event
+    )
+  );
+
+  parent.signal_scroll_event().connect(
+    sigc::mem_fun(
+      *this,
+      &GtkGui::Viewer::ImageView::Controller::on_scroll
+    )
+  );
+
 }
 
 Controller::~Controller() {

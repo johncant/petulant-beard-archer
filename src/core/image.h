@@ -5,6 +5,7 @@
 #include <string>
 #include "point2d.h"
 #include <opencv2/opencv.hpp>
+#include <boost/shared_ptr.hpp>
 
 namespace Core {
   class Image {
@@ -15,6 +16,7 @@ namespace Core {
     }
 
     std::string path;
+    std::string name;
 
     boost::shared_ptr<cv::Mat> pixels() {
       return boost::shared_ptr<cv::Mat>(new cv::Mat(cv::imread(path, CV_LOAD_IMAGE_COLOR)));
