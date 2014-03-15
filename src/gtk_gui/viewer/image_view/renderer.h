@@ -30,6 +30,8 @@ namespace GtkGui {
         GLuint fragment_shader;
 
         double zoom;
+        double sigma_x;
+        double sigma_y;
         Core::Point2D zoom_center;
 
         double vp_width;

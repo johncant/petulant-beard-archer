@@ -27,23 +27,36 @@ namespace GtkGui {
 
         };
 
-        // TODO - Use a combination of transformations
-        class OriginDistortionBase;
+        // Distortion with sigma=I
+        class StandardOriginDistortionBase;
 
-        class OriginDistortionBase : public Core::Transform2D::Base {
+        class StandardOriginDistortionBase : public Core::Transform2D::Base {
           public:
-          typedef Core::Transform2D::BisectionUnscale<OriginDistortionBase>::type Inverse;
-          double zoom, sigma;
+          typedef Core::Transform2D::BisectionUnscale<StandardOriginDistortionBase>::type Inverse;
+          double zoom;
 
-          OriginDistortionBase(double _zoom, double _sigma);
+          StandardOriginDistortionBase(double _zoom);
           Core::Point2D t(Core::Point2D input);
           template <class other>
-          OriginDistortionBase(other t);
+          StandardOriginDistortionBase(other t);
           Inverse inverse();
           private:
           inline double inverse_initial_llim(double dist);
           inline double inverse_initial_ulim(double dist);
           inline double radial_func(double dist);
+        };
+
+        // Distortion with any sigma
+        class OriginDistortionBase :
+          public Core::Transform2D::Combination<
+            Core::Transform2D::Combination<
+              Core::Transform2D::Scaling,
+              StandardOriginDistortionBase
+            >::type,
+            Core::Transform2D::Scaling
+          >::type {
+          public:
+          OriginDistortionBase(double _zoom, double sigma_x, double sigma_y);
         };
 
         typedef Core::Transform2D::Transform<OriginDistortionBase> OriginDistortion;

@@ -60,16 +60,17 @@ static const std::string fragment_shader_source = ""
 "uniform sampler2D image;\n"
 "uniform float zoom;\n"
 "uniform vec2 zoom_center;\n"
+"uniform vec2 sigma_diag_inverse;\n"
 "\n"
 "void main() {\n"
-"  float distance = length(zoom_center-uv);\n"
-"  float sigma = 0.2, nd = distance/sigma;\n"
-"  float local_zoom = 1.0+(zoom-1.0)*exp(-0.5*nd*nd);\n"
+"  vec2 normalized_x = (zoom_center-uv)*sigma_diag_inverse;\n"
+"  float local_zoom = 1.0+(zoom-1.0)*exp(-0.5*dot(normalized_x, normalized_x));\n"
 "  vec2 distorted_uv = zoom_center + (uv - zoom_center)/local_zoom;\n"
-"//  vec4 zoom_heat = vec4(2-local_zoom, local_zoom-1, 0, 1);\n"
 "  vec4 image_col;\n"
 "  if (distorted_uv[0] < 0.0 || distorted_uv[1] < 0.0 || distorted_uv[0] > 1.0 || distorted_uv[1] > 1.0) {\n"
 "    image_col = vec4(0.0, 0.0, 0.0, 1.0);\n"
+"  } else if (abs(length(normalized_x) - 0.5) <= 0.01) {\n"
+"    image_col = vec4(0.0, 1.0, 1.0, 0.5);"
 "  } else {\n"
 "    image_col = texture2D(image, distorted_uv);\n"
 "  }\n"
@@ -172,6 +173,17 @@ Renderer::Renderer(boost::shared_ptr<Core::Image> im) :
   vertex_shader(0),
   zoom(1.0),
   zoom_center(0.5, 0.5) {
+
+  if (pixels->cols > pixels->rows) {
+    // Landscape
+    sigma_x = 0.2*double(pixels->rows)/double(pixels->cols);
+    sigma_y = 0.2;
+  } else {
+    sigma_x = 0.2;
+    sigma_y = 0.2*double(pixels->cols)/double(pixels->rows);
+    // Portrait
+  }
+
 }
 
 Renderer::~Renderer() {
@@ -315,17 +327,23 @@ void Renderer::draw_image() {
   GL_CHECK(glUniform1iARB(img_loc, 0));
 
   // Zoom params
-  GLint zoom_loc, zoom_center_loc;
+  GLint zoom_loc, zoom_center_loc, sigma_di_loc;
   GLfloat im_zoom = this->zoom;
   GLfloat im_zoom_center[2] = {
     this->zoom_center.x, this->zoom_center.y
   };
+  GLfloat sigma_di[2];
+
+  sigma_di[0] = 1/sigma_x;
+  sigma_di[1] = 1/sigma_y;
 
   GL_CHECK(zoom_loc = glGetUniformLocation(shader_program, "zoom"));
   GL_CHECK(zoom_center_loc = glGetUniformLocation(shader_program, "zoom_center"));
+  GL_CHECK(sigma_di_loc = glGetUniformLocation(shader_program, "sigma_diag_inverse"));
 
   GL_CHECK(glUniform1fARB(zoom_loc, im_zoom));
   GL_CHECK(glUniform2fARB(zoom_center_loc, im_zoom_center[0], im_zoom_center[1]));
+  GL_CHECK(glUniform2fARB(sigma_di_loc, sigma_di[0], sigma_di[1]));
 
   // Image
   GL_CHECK(glDrawArrays(GL_QUADS, 0, 4));
@@ -344,9 +362,6 @@ void Renderer::draw_points() {
     double(sprite_pixels->cols)/(2.0*vp_width);
   double sprite_hh =
     double(sprite_pixels->rows)/(2.0*vp_height);
-
-  std::cout << "width: " << sprite_pixels->cols << ", height: " << sprite_pixels->rows << std::endl;
-  std::cout << "width: " << sprite_hw << ", height: " << sprite_hh << std::endl;
 
   TF::Combination<
     TF::Distortion::Inverse,
@@ -431,15 +446,39 @@ TF::ImageToViewport Renderer::get_image_to_viewport_transform() {
 }
 
 TF::Distortion Renderer::get_distortion_transform() {
-  return TF::Distortion(zoom_center, zoom, 0.2);
+  return TF::Distortion(zoom_center, zoom, sigma_x, sigma_y);
 }
 
 void Renderer::set_zoom_center(Point2D _zoom_center) {
-  zoom_center = get_image_to_viewport_transform().inverse().t(_zoom_center);
+  // _zoom_center is in viewport coords. Need in texture coords
+  Point2D text_zoom_center = get_image_to_viewport_transform().inverse().t(_zoom_center);
+
+  // Standardized distance
+  // - Lines of constant s_distance appear as circles
+  // at s_distance standard deviations from zoom_center
+  double s_distance = sqrt(
+    (text_zoom_center.x-zoom_center.x)*(text_zoom_center.x-zoom_center.x)/(sigma_x*sigma_x) +
+    (text_zoom_center.y-zoom_center.y)*(text_zoom_center.y-zoom_center.y)/(sigma_y*sigma_y)
+  );
+
+  // Distance in texture coords
+  double distance = sqrt(
+    (text_zoom_center.x-zoom_center.x)*(text_zoom_center.x-zoom_center.x) +
+    (text_zoom_center.y-zoom_center.y)*(text_zoom_center.y-zoom_center.y)
+  );
+
+  if (s_distance >= 0.5) {
+    Point2D edge_point(
+      zoom_center.x + sigma_x*(text_zoom_center.x - zoom_center.x)*(s_distance-0.5)/distance,
+      zoom_center.y + sigma_y*(text_zoom_center.y - zoom_center.y)*(s_distance-0.5)/distance
+    );
+    // edge_point is in texture_coordinates
+    zoom_center = edge_point;
+  }
 }
 
 Point2D Renderer::as_image_coords(Point2D pt) {
-  // Fwd transform defined as
+  // Fwd distortion transform defined as
   // Position in image part of viewport -> position on actual image
   //
   // Our question is, for a point on the image display space, 
@@ -447,6 +486,7 @@ Point2D Renderer::as_image_coords(Point2D pt) {
     get_image_to_viewport_transform().inverse(),
     get_distortion_transform()
   ).t(pt);
+
 }
 
 }}}

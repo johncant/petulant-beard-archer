@@ -29,49 +29,68 @@ namespace GtkGui { namespace Viewer { namespace ImageView { namespace Transforms
   }
 
   // Origin distortion
-  inline OriginDistortionBase::OriginDistortionBase(double _zoom, double _sigma) : zoom(_zoom), sigma(_sigma) {
+  inline StandardOriginDistortionBase::StandardOriginDistortionBase(double _zoom) : zoom(_zoom) {
   }
 
-  inline Core::Point2D OriginDistortionBase::t(Core::Point2D input) {
+  inline Core::Point2D StandardOriginDistortionBase::t(Core::Point2D input) {
+
     double dist = sqrt(input.x*input.x + input.y*input.y);
-    double warp = radial_func(dist);
+    double warp = radial_func(dist)/dist;
 
     return Core::Point2D(
-      input.x*radial_func(dist),
-      input.y*radial_func(dist)
+      input.x*warp,
+      input.y*warp
     );
   }
 
   template <class other>
-  inline OriginDistortionBase::OriginDistortionBase(other od) : zoom(od.zoom), sigma(od.sigma) {
+  inline StandardOriginDistortionBase::StandardOriginDistortionBase(other od) : zoom(od.zoom) {
   }
 
-  inline double OriginDistortionBase::inverse_initial_llim(double dist) {
+  inline double StandardOriginDistortionBase::inverse_initial_llim(double dist) {
     return dist;
   }
 
-  inline double OriginDistortionBase::inverse_initial_ulim(double dist) {
-    return dist*(1.0+(zoom-1.0)*exp(-0.5*(dist/sigma)*(dist/sigma)));
+  inline double StandardOriginDistortionBase::inverse_initial_ulim(double dist) {
+    return dist*(1.0+(zoom-1.0)*exp(-0.5*(dist)*(dist)));
   }
 
-  inline double OriginDistortionBase::radial_func(double dist) {
-    return dist/(1.0+(zoom-1.0)*exp(-0.5*(dist/sigma)*(dist/sigma)));
+  inline double StandardOriginDistortionBase::radial_func(double dist) {
+    return dist/(1.0+(zoom-1.0)*exp(-0.5*(dist)*(dist)));
   }
 
-  inline OriginDistortionBase::Inverse
-    OriginDistortionBase::inverse() {
+  inline StandardOriginDistortionBase::Inverse
+    StandardOriginDistortionBase::inverse() {
     namespace phx = boost::phoenix;
     namespace ph = boost::phoenix::placeholders;
 
-    return OriginDistortionBase::Inverse(
+    return StandardOriginDistortionBase::Inverse(
       *this,
-      phx::bind(&OriginDistortionBase::inverse_initial_llim, *this, ph::_1),
-      phx::bind(&OriginDistortionBase::inverse_initial_ulim, *this, ph::_1),
-      phx::bind(&OriginDistortionBase::radial_func, *this, ph::_1),
+      phx::bind(&StandardOriginDistortionBase::inverse_initial_llim, *this, ph::_1),
+      phx::bind(&StandardOriginDistortionBase::inverse_initial_ulim, *this, ph::_1),
+      phx::bind(&StandardOriginDistortionBase::radial_func, *this, ph::_1),
       0.0002 // Correct pixel on most displays
     );
   }
 
+  inline OriginDistortionBase::OriginDistortionBase(double _zoom, double sigma_x, double sigma_y) :
+    Core::Transform2D::Combination<
+      Core::Transform2D::Combination<
+        Core::Transform2D::Scaling,
+        StandardOriginDistortionBase
+      >::type,
+      Core::Transform2D::Scaling
+    >::type(
+      Core::Transform2D::Combination<
+        Core::Transform2D::Scaling,
+        StandardOriginDistortionBase
+      >::type(
+        Core::Transform2D::Scaling(sigma_x, sigma_y).inverse(),
+        StandardOriginDistortionBase(_zoom)
+      ),
+      Core::Transform2D::Scaling(sigma_x, sigma_y)
+    ) {
+  }
 
 }}}}
 
