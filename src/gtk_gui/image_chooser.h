@@ -11,12 +11,19 @@
 
 
 namespace GtkGui {
+
   class ImageChooser : public Gtk::IconView {
+    typedef sigc::signal<void, boost::shared_ptr<Core::Image> > ImageSelectedSignal;
+    ImageSelectedSignal m_signal_image_chosen;
+
     public:
+
     ImageChooser(GtkIconView* cobj, Glib::RefPtr<Gtk::Builder> builder);
     ~ImageChooser();
-
     void set_scene(boost::shared_ptr<Core::Scene> scene);
+    void on_item_activated(const Gtk::TreeModel::Path& path);
+
+    ImageSelectedSignal signal_image_chosen();
 
     class ImageListStore : public Gtk::ListStore {
 
@@ -31,6 +38,7 @@ namespace GtkGui {
         Gtk::TreeModelColumn<int>  num_points;
         Gtk::TreeModelColumn<Glib::RefPtr<Gdk::Pixbuf> > pixbuf;
         Gtk::TreeModelColumn<Glib::ustring> name;
+        Gtk::TreeModelColumn<boost::shared_ptr<Core::Image> > image;
       };
 
       public: // Less public

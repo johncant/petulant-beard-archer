@@ -158,7 +158,7 @@ void Renderer::init_shaders() {
 Renderer::Renderer(boost::shared_ptr<Core::Image> im) :
   GtkGui::Viewer::Renderer(),
   image(im),
-  pixels(image->pixels()),
+  pixels(im->pixels()),
   sprite_pixels(
     boost::shared_ptr<cv::Mat>(
       new cv::Mat(cv::imread("/home/john/src/photogrammetry/assets/point.png", CV_LOAD_IMAGE_UNCHANGED))
@@ -172,7 +172,6 @@ Renderer::Renderer(boost::shared_ptr<Core::Image> im) :
   vertex_shader(0),
   zoom(1.0),
   zoom_center(0.5, 0.5) {
-  
 }
 
 Renderer::~Renderer() {
@@ -255,8 +254,10 @@ void Renderer::draw() {
   GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
   GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));
 
-  draw_image();
-  draw_points();
+//  if (vp_height > 0.5 && vp_width > 0.5) {
+    draw_image();
+    draw_points();
+//  }
 }
 
 void Renderer::draw_image() {

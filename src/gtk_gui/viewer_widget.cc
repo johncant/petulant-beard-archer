@@ -11,9 +11,13 @@ namespace GtkGui {
     Colormap xcolormap;
     XVisualInfo *xvisual;
     GdkVisual *visual;
+    bool realized, configured, exposed;
     ViewerWidgetImpl() :
       xvisual(0),
-      visual(0)
+      visual(0),
+      realized(false),
+      configured(false),
+      exposed(false)
     { }
   };
 }
@@ -42,12 +46,28 @@ GtkGui::ViewerWidget::ViewerWidget(GtkDrawingArea *gobj, Glib::RefPtr<Gtk::Build
   Gtk::DrawingArea(gobj),
   impl(*new GtkGui::ViewerWidgetImpl())
 {
-  this->set_events(Gdk::ALL_EVENTS_MASK);
+  initialize();
 }
 
 GtkGui::ViewerWidget::ViewerWidget() :
   impl(*new GtkGui::ViewerWidgetImpl())
 {
+  initialize();
+}
+
+void GtkGui::ViewerWidget::initialize() {
+
+  set_events(Gdk::ALL_EVENTS_MASK);
+
+  // Signal gets renamed in Gtk+-3.0
+  #if GTK_CHECK_VERSION(3,0,0)
+  signal_draw().connect(sigc::mem_fun(*this, &ViewerWidget::on_expose_gtk3));
+  #else
+  signal_expose_event().connect(sigc::mem_fun(*this, &ViewerWidget::on_expose_gtk2));
+  #endif
+  signal_configure_event().connect(sigc::mem_fun(*this, &ViewerWidget::on_configure2));
+  signal_realize().connect(sigc::mem_fun(*this, &ViewerWidget::on_realize2));
+
 }
 
 void GtkGui::ViewerWidget::on_realize2() {
@@ -92,8 +112,8 @@ void GtkGui::ViewerWidget::on_realize2() {
 
   gtk_widget_set_size_request(GTK_WIDGET(this->gobj()), 100, 100);
 
+  impl.realized = true;
   if (controller && glXMakeCurrent(display, id, impl.context) == TRUE) {
-    std::cout << "context " << impl.context << std::endl;
     controller->realize(window);
   }
 
@@ -111,14 +131,15 @@ bool GtkGui::ViewerWidget::on_configure2(GdkEventConfigure* const&) {
   std::cout << "configure event" << std::endl;
   std::cout << "visual" << impl.visual << std::endl;
 
-  if (controller && impl.visual) {
+  if (impl.visual) {
 
     window = gtk_widget_get_window(GTK_WIDGET(this->gobj()));
     display = gdk_x11_display_get_xdisplay(gdk_window_get_display(window));
 
     id = gdk_x11_window_get_xid(window);
 
-    if (glXMakeCurrent(display, id, impl.context) == TRUE) {
+    impl.configured = true;
+    if (controller && glXMakeCurrent(display, id, impl.context) == TRUE) {
       gtk_widget_get_allocation(GTK_WIDGET(this->gobj()), &allocation);
       controller->configure(allocation.width, allocation.height, window);
     }
@@ -142,13 +163,14 @@ bool GtkGui::ViewerWidget::on_expose1() {
   int id;
 
   std::cout << "expose event" << std::endl;
-  if (controller && impl.visual) {
+  if (impl.visual) {
     window = gtk_widget_get_window(GTK_WIDGET(this->gobj()));
     display = gdk_x11_display_get_xdisplay(gdk_window_get_display(window));
 
     id = gdk_x11_window_get_xid(window);
 
-    if (glXMakeCurrent(display, id, impl.context) == TRUE) {
+    impl.exposed = true;
+    if (controller && glXMakeCurrent(display, id, impl.context) == TRUE) {
       controller->draw(window);
       glXSwapBuffers(display, id);
     }
@@ -156,4 +178,36 @@ bool GtkGui::ViewerWidget::on_expose1() {
 
 }
 
+
+void GtkGui::ViewerWidget::show_image(boost::shared_ptr<Core::Image> im) {
+  controller = boost::shared_ptr<GtkGui::Viewer::Controller>(
+    new GtkGui::Viewer::ImageView::Controller(*this, im)
+  );
+
+  // Wait until we're told to set up a context.
+  if (!impl.realized) return;
+
+  GdkWindow *window = gtk_widget_get_window(GTK_WIDGET(this->gobj()));
+  Display *display = gdk_x11_display_get_xdisplay(gdk_window_get_display(window));
+  int id = gdk_x11_window_get_xid(window);
+
+  if (glXMakeCurrent(display, id, impl.context) == TRUE) {
+
+    // Bring controller up to date with our current state
+    controller->realize(window);
+
+    if (impl.configured) {
+      int width, height;
+      GtkAllocation allocation;
+
+      gtk_widget_get_allocation(GTK_WIDGET(this->gobj()), &allocation);
+      controller->configure(allocation.width, allocation.height, window);
+    }
+
+    if (impl.exposed) {
+      controller->draw(window);
+      glXSwapBuffers(display, id);
+    }
+  }
+}
 

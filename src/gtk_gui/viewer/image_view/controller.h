@@ -21,8 +21,10 @@ namespace GtkGui {
         protected:
         boost::shared_ptr<GtkGui::Viewer::ImageView::Renderer> renderer;
         boost::shared_ptr<Core::Image> image;
+        std::vector<sigc::connection> signal_connections;
 
         void connect_signal_handlers(Gtk::Widget &parent);
+        void disconnect_signal_handlers();
         public:
         Controller(Gtk::Widget &parent, boost::shared_ptr<Core::Image> im);
         ~Controller();

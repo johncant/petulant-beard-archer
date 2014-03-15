@@ -27,6 +27,20 @@ ImageChooser::ImageChooser(GtkIconView* gobj, Glib::RefPtr<Gtk::Builder> builder
 ImageChooser::~ImageChooser() {
 }
 
+void ImageChooser::on_item_activated(const Gtk::TreeModel::Path& path) {
+  std::cout << "activated" << std::endl;
+
+  Glib::RefPtr<Gtk::TreeModel> model = get_model();
+  Gtk::TreeModel::iterator iter = model->get_iter(path);
+  Gtk::TreeModel::Row row = *iter;
+
+  m_signal_image_chosen.emit(row[ImageChooser::ImageListStore::columns.image]);
+}
+
+ImageChooser::ImageSelectedSignal GtkGui::ImageChooser::signal_image_chosen() {
+  return m_signal_image_chosen;
+}
+
 void ImageChooser::set_scene(shared_ptr<Scene> scene) {
   Glib::RefPtr<ImageListStore> store = ImageListStore::create();  for_each(scene->images.begin(), scene->images.end(),
     phx::bind(&ImageListStore::add_entry, store.operator->(), phx::_1)
@@ -48,6 +62,7 @@ ImageChooser::ImageListStore::Columns::Columns() {
   add(num_points);
   add(pixbuf);
   add(name);
+  add(image);
 }
 
 void ImageChooser::ImageListStore::add_entry(shared_ptr<Image> im) {
@@ -56,6 +71,7 @@ void ImageChooser::ImageListStore::add_entry(shared_ptr<Image> im) {
   row[columns.num_points] = im->points.size();
   row[columns.pixbuf]     = Gdk::Pixbuf::create_from_file(im->path, 32, 32, true);
   row[columns.name]       = im->name;
+  row[columns.image]      = im;
 }
 
 

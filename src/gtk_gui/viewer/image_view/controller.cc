@@ -1,7 +1,16 @@
 #include "controller.h"
+#include "boost/phoenix.hpp"
 #include "boost/algorithm/clamp.hpp"
+#include <algorithm>
+
+//#include "boost/phoenix/stl/algorithm.hpp"
+//#include "boost/phoenix/bind.hpp"
 
 using boost::algorithm::clamp;
+namespace phx {
+  using namespace boost::phoenix;
+  using namespace boost::phoenix::arg_names;
+}
 using namespace Core;
 
 namespace GtkGui { namespace Viewer { namespace ImageView {
@@ -25,42 +34,58 @@ static Point2D point_from_event(event* e) {
 
 // *structors
 Controller::Controller(Gtk::Widget& parent, boost::shared_ptr<Image> im) :
-  image(image),
-  renderer(boost::shared_ptr<Renderer>(new Renderer(im))),
+  image(im),
+  renderer(new Renderer(im)),
   zoom_level(0),
   zoom_center(0.5, 0.5)
 {
-  cursor_crosshair = gdk_cursor_new(GDK_CROSSHAIR);
   connect_signal_handlers(parent);
+  cursor_crosshair = gdk_cursor_new(GDK_CROSSHAIR);
 }
 
 void Controller::connect_signal_handlers(Gtk::Widget &parent) {
 
-  parent.signal_button_press_event().connect(
-    sigc::mem_fun(
-      *this,
-      &GtkGui::Viewer::ImageView::Controller::on_button_press_event
+  signal_connections.push_back(
+    parent.signal_button_press_event().connect(
+      sigc::mem_fun(
+        *this,
+        &GtkGui::Viewer::ImageView::Controller::on_button_press_event
+      )
     )
   );
 
-  parent.signal_motion_notify_event().connect(
-    sigc::mem_fun(
-      *this,
-      &GtkGui::Viewer::ImageView::Controller::on_motion_notify_event
+  signal_connections.push_back(
+    parent.signal_motion_notify_event().connect(
+      sigc::mem_fun(
+        *this,
+        &GtkGui::Viewer::ImageView::Controller::on_motion_notify_event
+      )
     )
   );
 
-  parent.signal_scroll_event().connect(
-    sigc::mem_fun(
-      *this,
-      &GtkGui::Viewer::ImageView::Controller::on_scroll
+  signal_connections.push_back(
+    parent.signal_scroll_event().connect(
+      sigc::mem_fun(
+        *this,
+        &GtkGui::Viewer::ImageView::Controller::on_scroll
+      )
     )
+  );
+
+}
+
+void Controller::disconnect_signal_handlers() {
+
+  std::for_each(
+    signal_connections.begin(),
+    signal_connections.end(),
+    phx::bind(&sigc::connection::disconnect, phx::_1)
   );
 
 }
 
 Controller::~Controller() {
-  g_object_unref(cursor_crosshair);
+  disconnect_signal_handlers();
 }
 
 // Accessors

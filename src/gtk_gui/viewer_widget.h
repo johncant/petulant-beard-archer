@@ -5,13 +5,12 @@
 #include <gtkmm/builder.h>
 #include <gtk/gtk.h>
 
-// This can go - TODO - move Controller into impl
-#include <stdlib.h>
-#include <boost/shared_ptr.hpp>
-
+//#include <stdlib.h>
 #include "gtk_gui.h"
 #include "viewer/renderer.h"
 #include "viewer/controller.h"
+#include <boost/shared_ptr.hpp>
+#include "../core/image.h"
 
 namespace GtkGui {
   class ViewerWidgetImpl;
@@ -35,7 +34,10 @@ namespace GtkGui {
     bool on_expose_gtk2(GdkEventExpose* evt);
     bool on_expose1();
 
+    void show_image(boost::shared_ptr<Core::Image> im);
+
     private:
+    void initialize();
     GtkGui::ViewerWidgetImpl& impl;
     boost::shared_ptr<GtkGui::Viewer::Controller> controller;
   };

@@ -43,32 +43,6 @@ namespace GtkGui {
 
     // Test GtkGlExt - gtkglextmm doesn't support Gtk+-3.0 yet
 
-    GtkGui::ViewerWidget *viewer = 0;
-    builder->get_widget_derived("drawingarea_viewer", viewer);
-
-    // Signal gets renamed in Gtk+-3.0
-    #if GTK_CHECK_VERSION(3,0,0)
-    viewer->signal_draw().connect(sigc::mem_fun(viewer, &ViewerWidget::on_expose_gtk3));
-    #else
-    viewer->signal_expose_event().connect(sigc::mem_fun(viewer, &ViewerWidget::on_expose_gtk2));
-    #endif
-    viewer->signal_configure_event().connect(sigc::mem_fun(viewer, &ViewerWidget::on_configure2));
-    viewer->signal_realize().connect(sigc::mem_fun(viewer, &ViewerWidget::on_realize2));
-
-    // Add a test scene
-    std::ifstream file("enta4.i3d", std::fstream::in);
-    Importers::Insight3dImporter i(file, std::cout);
-
-    shared_ptr<Scene> new_scene(i.import());
-
-    shared_ptr<Image> test_image(new Image());
-    test_image->path = "test.jpg";
-    new_scene->add_image(test_image);
-
-    GtkGui::ImageChooser *image_chooser = 0;
-    builder->get_widget_derived("iconview_image_chooser", image_chooser);
-
-    image_chooser->set_scene(new_scene);
 
     #if GTK_CHECK_VERSION(3,0,0)
     app->run(*root_window, argc, argv);
