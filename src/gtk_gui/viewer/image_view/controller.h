@@ -6,21 +6,24 @@
 #include "../controller.h"
 #include "../renderer.h"
 #include "renderer.h"
+#include "image_controller.h"
 #include "../../../core/image.h"
 #include "../../../core/point2d.h"
 
 namespace GtkGui {
   namespace Viewer {
     namespace ImageView {
-      class Controller : public GtkGui::Viewer::Controller {
 
+      class Controller : public Viewer::Controller {
+
+        protected:
+        boost::shared_ptr<ImageController> image_controller;
         double zoom_level;
         Core::Point2D zoom_center;
         GdkCursor *cursor_crosshair;
 
         protected:
         boost::shared_ptr<GtkGui::Viewer::ImageView::Renderer> renderer;
-        boost::shared_ptr<Core::Image> image;
         std::vector<sigc::connection> signal_connections;
 
         void connect_signal_handlers(Gtk::Widget &parent);
@@ -39,6 +42,7 @@ namespace GtkGui {
         bool on_scroll(GdkEventScroll* evt);
         bool on_button_press_event(GdkEventButton* evt);
       };
+
     }
   }
 }

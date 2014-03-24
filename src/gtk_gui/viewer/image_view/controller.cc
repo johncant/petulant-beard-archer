@@ -34,7 +34,7 @@ static Point2D point_from_event(event* e) {
 
 // *structors
 Controller::Controller(Gtk::Widget& parent, boost::shared_ptr<Image> im) :
-  image(im),
+  image_controller(new ImageController(im)),
   renderer(new Renderer(im)),
   zoom_level(0),
   zoom_center(0.5, 0.5)
@@ -92,9 +92,7 @@ Controller::~Controller() {
 
 double Controller::get_zoom() {
   // TODO - CONFIG
-  double z = exp(zoom_level*log(20.0));
-  std::cout << "Zooming to " << z << std::endl;
-  return z;
+  return exp(zoom_level*log(20.0));
 }
 
 // Events that come from Viewer
@@ -111,7 +109,7 @@ void Controller::draw(GdkWindow *window) {
   renderer->draw();
 }
 
-
+// Interaction events
 bool Controller::on_button_press_event(GdkEventButton* evt) {
 
   Point2D pos = point_from_event(evt);
@@ -122,7 +120,7 @@ bool Controller::on_button_press_event(GdkEventButton* evt) {
     // TODO - select or deselect individual other points
   } else if (evt->button == 1) {
     // TODO - Select 1 point or create point
-    image->add_point(renderer->as_image_coords(pos));
+    image_controller->add_point(renderer->as_image_coords(pos));
     std::cout << "point added" << std::endl;
   }
 
