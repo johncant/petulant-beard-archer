@@ -9,14 +9,32 @@
 #include "image_controller.h"
 #include "../../../core/image.h"
 #include "../../../core/point2d.h"
+#include "point_view_params.h"
 
 namespace GtkGui {
   namespace Viewer {
     namespace ImageView {
 
+//      class Selection {
+//        std::vector<PointRef> points;
+//
+//        public:
+//        Selection operator+(const Selection& other) const;
+//        std::vector<PointRef> get_points();
+//        void add_point();
+//      };
+
       class Controller : public Viewer::Controller {
 
+        public:
+
+        typedef GtkGui::Viewer::ImageView::ImageController<
+          PointViewParams
+        > ImageController;
+        typedef ImageController::PointRef PointRef;
+
         protected:
+        PointRef highlighted_point;
         boost::shared_ptr<ImageController> image_controller;
         double zoom_level;
         Core::Point2D zoom_center;
@@ -28,8 +46,12 @@ namespace GtkGui {
 
         void connect_signal_handlers(Gtk::Widget &parent);
         void disconnect_signal_handlers();
+
         public:
-        Controller(Gtk::Widget &parent, boost::shared_ptr<Core::Image> im);
+        Controller(
+          Gtk::Widget &parent,
+          boost::shared_ptr<ImageController> im
+        );
         ~Controller();
 
         void draw(GdkWindow *window);
@@ -41,6 +63,7 @@ namespace GtkGui {
         bool on_leave_notify_event(GdkEventCrossing* evt);
         bool on_scroll(GdkEventScroll* evt);
         bool on_button_press_event(GdkEventButton* evt);
+
       };
 
     }

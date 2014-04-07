@@ -1,5 +1,6 @@
 #include "renderer.h"
 #include <opencv2/opencv.hpp>
+#include <boost/tuple/tuple.hpp>
 
 // External names
 using Core::Image;
@@ -9,6 +10,8 @@ namespace TF {
   using namespace Core::Transform2D;
   using namespace GtkGui::Viewer::ImageView::Transforms;
 };
+
+using GtkGui::Viewer::ImageView::PointViewParams;
 
 // Get in context
 namespace GtkGui { namespace Viewer { namespace ImageView {
@@ -31,16 +34,20 @@ const std::string vertex_shader_source = ""
 "precision mediump float;\n"
 "in vec2 corners;\n"
 "in vec2 texture_uv;\n"
+"in float vertex_highlight;\n"
+"\n"
 "mat4 ortho = mat4( 2.0,  0.0, 0.0,  0.0,\n"
 "                   0.0, -2.0, 0.0,  0.0,\n"
 "                   0.0,  0.0, 0.0,  0.0,\n"
 "                  -1.0,  1.0, 0.0,  1.0);\n"
 "varying vec2 uv;\n"
+"varying float highlight;\n"
 "\n"
 "\n"
 "void main() {\n"
 "  gl_Position = ortho*vec4(corners[0], corners[1], 0.0, 1.0);\n"
 "  uv = texture_uv;\n"
+"  highlight = vertex_highlight;\n"
 "//  gl_PointSize = 5;\n"
 "//  gl_ClipDistance[0] = 10.0;\n"
 "//  gl_ClipDistance[1] = 10.0;\n"
@@ -56,6 +63,7 @@ static const std::string fragment_shader_source = ""
 "precision mediump float;\n"
 "\n"
 "varying vec2 uv;\n"
+"varying float highlight;\n"
 "\n"
 "uniform sampler2D image;\n"
 "uniform float zoom;\n"
@@ -72,7 +80,10 @@ static const std::string fragment_shader_source = ""
 "  } else if (abs(length(normalized_x) - 0.5) <= 0.01) {\n"
 "    image_col = vec4(0.0, 1.0, 1.0, 0.5);"
 "  } else {\n"
-"    image_col = texture2D(image, distorted_uv);\n"
+"    vec4 tex_col = texture2D(image, distorted_uv);\n"
+"    vec4 flip_col = vec4(1.0, 1.0, 1.0, 0.0);\n"
+"    vec4 scale_col = vec4(1.0-highlight, 1.0-highlight, 1.0-highlight, 1.0);\n"
+"    image_col = flip_col-(flip_col-tex_col)*scale_col; // TODO - don't touch the alpha\n"
 "  }\n"
 "//  gl_FragColor = 0.5*image_col+0.5*zoom_heat;\n"
 "    gl_FragColor = image_col;\n"
@@ -134,6 +145,7 @@ void Renderer::init_shaders() {
 
   GL_CHECK(glBindAttribLocation(shader_program, 0, "corners"));
   GL_CHECK(glBindAttribLocation(shader_program, 1, "texture_uv"));
+  GL_CHECK(glBindAttribLocation(shader_program, 2, "vertex_highlight"));
 
   GL_CHECK(glLinkProgram(shader_program));
 
@@ -260,7 +272,7 @@ void Renderer::configure(unsigned int width, unsigned int height) {
 
 }
 
-void Renderer::draw() {
+void Renderer::draw(std::vector<boost::tuple<Core::Point2D, PointViewParams> > const & points) {
   // Background
   GL_CHECK(glClearColor(0, 0, 0, 1));
   GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
@@ -268,7 +280,7 @@ void Renderer::draw() {
 
 //  if (vp_height > 0.5 && vp_width > 0.5) {
     draw_image();
-    draw_points();
+    draw_points(points);
 //  }
 }
 
@@ -350,13 +362,14 @@ void Renderer::draw_image() {
 
 }
 
-void Renderer::draw_points() {
+void Renderer::draw_points(const std::vector<boost::tuple<Core::Point2D, PointViewParams> >& points) {
   GLuint vbo[2], vao[2];
 
   GL_CHECK(glUseProgram(shader_program));
 
-  float positions[8*image->points.size()];
-  float tex_coords[8*image->points.size()];
+  float positions[8*points.size()];
+  float tex_coords[8*points.size()];
+  float highlights[4*points.size()];
 
   double sprite_hw =
     double(sprite_pixels->cols)/(2.0*vp_width);
@@ -371,15 +384,15 @@ void Renderer::draw_points() {
     get_image_to_viewport_transform()
   );
 
-  for(int i=0; i<image->points.size(); i++) {
-    positions[8*i+0] = tform.t(image->points[i]).x-sprite_hw;
-    positions[8*i+1] = tform.t(image->points[i]).y-sprite_hh;
-    positions[8*i+2] = tform.t(image->points[i]).x-sprite_hw;
-    positions[8*i+3] = tform.t(image->points[i]).y+sprite_hh;
-    positions[8*i+4] = tform.t(image->points[i]).x+sprite_hw;
-    positions[8*i+5] = tform.t(image->points[i]).y+sprite_hh;
-    positions[8*i+6] = tform.t(image->points[i]).x+sprite_hw;
-    positions[8*i+7] = tform.t(image->points[i]).y-sprite_hh;
+  for(int i=0; i<points.size(); i++) {
+    positions[8*i+0] = tform.t(points[i].get<0>()).x-sprite_hw;
+    positions[8*i+1] = tform.t(points[i].get<0>()).y-sprite_hh;
+    positions[8*i+2] = tform.t(points[i].get<0>()).x-sprite_hw;
+    positions[8*i+3] = tform.t(points[i].get<0>()).y+sprite_hh;
+    positions[8*i+4] = tform.t(points[i].get<0>()).x+sprite_hw;
+    positions[8*i+5] = tform.t(points[i].get<0>()).y+sprite_hh;
+    positions[8*i+6] = tform.t(points[i].get<0>()).x+sprite_hw;
+    positions[8*i+7] = tform.t(points[i].get<0>()).y-sprite_hh;
 
     tex_coords[8*i+0] = 0.0;
     tex_coords[8*i+1] = 0.0;
@@ -389,15 +402,22 @@ void Renderer::draw_points() {
     tex_coords[8*i+5] = 1.0;
     tex_coords[8*i+6] = 1.0;
     tex_coords[8*i+7] = 0.0;
+
+    float hl = (points[i].get<1>().is_highlighted()) ? 0.5 : 0.0;
+
+    for(int j=0;j<4;j++) {
+      highlights[4*i+j] = hl;
+    }
+
   }
 
   // Generate buffers
-  GL_CHECK(glGenBuffers(2, vbo));
-  GL_CHECK(glGenVertexArrays(2, vao));
+  GL_CHECK(glGenBuffers(3, vbo));
+  GL_CHECK(glGenVertexArrays(3, vao));
 
   // Set vertex position data
   GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, vbo[0]));
-  GL_CHECK(glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(GLfloat)*image->points.size(), positions, GL_STATIC_DRAW));
+  GL_CHECK(glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(GLfloat)*points.size(), positions, GL_STATIC_DRAW));
   GL_CHECK(glBindVertexArray(vao[0]));
 
   GL_CHECK(glEnableVertexAttribArray(0));
@@ -405,10 +425,17 @@ void Renderer::draw_points() {
 
   // Set vertex texture data
   GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, vbo[1]));
-  GL_CHECK(glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(GLfloat)*image->points.size(), tex_coords, GL_STATIC_DRAW));
+  GL_CHECK(glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(GLfloat)*points.size(), tex_coords, GL_STATIC_DRAW));
 
   GL_CHECK(glEnableVertexAttribArray(1));
   GL_CHECK(glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, 0));
+
+  // Set vertex highlight
+  GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, vbo[2]));
+  GL_CHECK(glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(GLfloat)*points.size(), highlights, GL_STATIC_DRAW));
+
+  GL_CHECK(glEnableVertexAttribArray(2));
+  GL_CHECK(glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 0, 0));
 
   // Texture
   GLint pt_img_loc;
@@ -432,7 +459,7 @@ void Renderer::draw_points() {
   GL_CHECK(glUniform2fARB(zoom_center_loc, sp_zoom_center[0], sp_zoom_center[1]));
 
   // Image
-  GL_CHECK(glDrawArrays(GL_QUADS, 0, 4*image->points.size()));
+  GL_CHECK(glDrawArrays(GL_QUADS, 0, 4*points.size()));
 
 }
 
@@ -487,6 +514,43 @@ Point2D Renderer::as_image_coords(Point2D pt) {
     get_distortion_transform()
   ).t(pt);
 
+}
+/*
+boost::geometry::model::box<
+  boost::geometry::model::point<
+    double, 2, boost::geometry::cs::cartesian
+  >
+>*/
+boost::geometry::model::polygon<
+  boost::geometry::model::point<
+    double, 2, boost::geometry::cs::cartesian
+  >
+>
+Renderer::get_reverse_marker_bounds(const Core::Point2D &point) {
+
+  typedef boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> pt_t;
+
+  double rx = sqrt(2)*double(sprite_pixels->cols)*0.5/vp_width;
+  double ry = sqrt(2)*double(sprite_pixels->rows)*0.5/vp_width;
+
+  boost::geometry::model::polygon<pt_t> result;
+
+  for(int i=0;i<4;i++) {
+    double theta = -M_PI*0.25+i*M_PI*0.5;
+
+    Core::Point2D box_pt(
+      point.x + rx*cos(theta),
+      point.y + ry*sin(theta)
+    );
+
+    Core::Point2D tf_box_pt(as_image_coords(box_pt));
+
+    pt_t boost_pt(tf_box_pt.x, tf_box_pt.y);
+
+    result.outer().push_back(boost_pt);
+  }
+
+  return result;
 }
 
 }}}

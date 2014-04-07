@@ -19,11 +19,12 @@ class ImageControllerBase {
 };
 
 // Mixins for abstracting access to image data and making it efficient
+template <typename point_user_data_t>
 class ImageController :
-  public ImagePointIndexMixin<ImageControllerBase> {
+  public ImagePointIndexMixin<ImageControllerBase, point_user_data_t> {
   public:
   ImageController(boost::shared_ptr<Core::Image> im) :
-    ImagePointIndexMixin<ImageControllerBase>(im)
+    ImagePointIndexMixin<ImageControllerBase, point_user_data_t>(im)
   {
   }
 };

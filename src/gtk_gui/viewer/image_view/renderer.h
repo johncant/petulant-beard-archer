@@ -7,10 +7,15 @@
 #include <GL/gl.h>
 #include <GL/glx.h>
 #include <GL/glxext.h>
+#include <boost/geometry/core/cs.hpp>
+#include <boost/geometry/geometries/point.hpp>
+#include <boost/geometry/geometries/polygon.hpp>
 #include "../renderer.h"
 #include "../../../core/image.h"
 #include "../../../core/transform2d.h"
 #include "transforms.h"
+#include "point_view_params.h"
+#include "boost/tuple/tuple.hpp"
 
 namespace GtkGui {
   namespace Viewer {
@@ -46,16 +51,22 @@ namespace GtkGui {
           get_image_to_viewport_transform();
 
         void draw_image();
-        void draw_points();
+        void draw_points(std::vector<boost::tuple<Core::Point2D, PointViewParams> > const & points);
         public:
         Renderer(boost::shared_ptr<Core::Image> im);
         ~Renderer();
-        void draw();
+        void draw(std::vector<boost::tuple<Core::Point2D, GtkGui::Viewer::ImageView::PointViewParams> > const & points);
         void configure(unsigned int width, unsigned int height);
         void realize();
         void set_zoom(double zoom);
         void set_zoom_center(Core::Point2D zoom_center);
         Core::Point2D as_image_coords(Core::Point2D pt);
+
+        boost::geometry::model::polygon<
+          boost::geometry::model::point<
+            double, 2, boost::geometry::cs::cartesian
+          >
+        > get_reverse_marker_bounds(const Core::Point2D& pt);
       };
 
     }

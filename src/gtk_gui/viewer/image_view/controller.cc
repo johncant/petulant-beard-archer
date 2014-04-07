@@ -33,11 +33,15 @@ static Point2D point_from_event(event* e) {
 // Impl
 
 // *structors
-Controller::Controller(Gtk::Widget& parent, boost::shared_ptr<Image> im) :
-  image_controller(new ImageController(im)),
-  renderer(new Renderer(im)),
+
+
+
+Controller::Controller(Gtk::Widget& parent, boost::shared_ptr<ImageController> imc) :
+  image_controller(imc),
+  renderer(new Renderer(imc->image)),
   zoom_level(0),
-  zoom_center(0.5, 0.5)
+  zoom_center(0.5, 0.5),
+  highlighted_point(*imc)
 {
   connect_signal_handlers(parent);
   cursor_crosshair = gdk_cursor_new(GDK_CROSSHAIR);
@@ -106,7 +110,7 @@ void Controller::configure(unsigned int width, unsigned int height, GdkWindow *w
 }
 
 void Controller::draw(GdkWindow *window) {
-  renderer->draw();
+  renderer->draw(image_controller->get_points_values());
 }
 
 // Interaction events
@@ -125,15 +129,35 @@ bool Controller::on_button_press_event(GdkEventButton* evt) {
   }
 
   gdk_window_invalidate_rect(evt->window, NULL, true);
-  
+
 //  Glib::RefPtr<Gtk::widget> widget = Glib::wrap(evt->window->get_user_data());
 //  widget->signal_button_release_event()
 }
 
 bool Controller::on_motion_notify_event(GdkEventMotion* evt) {
-  zoom_center = point_from_event(evt);
-  renderer->set_zoom_center(zoom_center);
+  Core::Point2D vp_mouse_pos = point_from_event(evt);
 
+  // TODO - Zoom center should be decided in here - render should be more dumb
+  renderer->set_zoom_center(vp_mouse_pos);
+
+  // Change highlight
+
+  if (highlighted_point) {
+    highlighted_point.params().m_is_highlighted = false;
+  }
+
+  highlighted_point = image_controller->
+  get_point_under_cursor(
+    vp_mouse_pos,
+    renderer->get_reverse_marker_bounds(vp_mouse_pos)
+  );
+
+//  std::cout << highlighted_point.id << std::endl;
+  if (highlighted_point) {
+    highlighted_point.params().m_is_highlighted = true;
+  }
+
+  // Redraw
   gdk_window_invalidate_rect(evt->window, NULL, true);
 }
 

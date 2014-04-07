@@ -1,5 +1,6 @@
 #include "viewer_widget.h"
 #include "viewer/image_view/controller.h"
+#include "viewer/image_view/image_controller.h"
 #include <GL/gl.h>
 #include <GL/glx.h>
 #include <gdk/gdkx.h>
@@ -162,7 +163,6 @@ bool GtkGui::ViewerWidget::on_expose1() {
   Display *display;
   int id;
 
-  std::cout << "expose event" << std::endl;
   if (impl.visual) {
     window = gtk_widget_get_window(GTK_WIDGET(this->gobj()));
     display = gdk_x11_display_get_xdisplay(gdk_window_get_display(window));
@@ -180,8 +180,16 @@ bool GtkGui::ViewerWidget::on_expose1() {
 
 
 void GtkGui::ViewerWidget::show_image(boost::shared_ptr<Core::Image> im) {
-  controller = boost::shared_ptr<GtkGui::Viewer::Controller>(
-    new GtkGui::Viewer::ImageView::Controller(*this, im)
+  typedef GtkGui::Viewer::ImageView::Controller Controller;
+  typedef Controller::ImageController ImageController;
+
+  controller = boost::shared_ptr<Controller>(
+    new Controller(
+      *this,
+      boost::shared_ptr<ImageController>(
+        new ImageController(im)
+      )
+    )
   );
 
   // Wait until we're told to set up a context.
