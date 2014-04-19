@@ -3,6 +3,8 @@
 
 // Give vim and IDEs some context even though we ....
 #include "transforms.h"
+#include <boost/phoenix/core.hpp>
+#include <boost/phoenix/bind.hpp>
 
 // .... only allow inclusion from one place 
 #ifndef __INSIDE_TRANSFORMS_H__

@@ -1,9 +1,6 @@
 #ifndef __VIEWER_IMAGE_VIEW_TRANSFORMS_H__
 #define __VIEWER_IMAGE_VIEW_TRANSFORMS_H__
 
-#include <boost/phoenix/core.hpp>
-#include <boost/phoenix/bind.hpp>
-
 #include "../../../core/transform2d.h"
 
 namespace GtkGui {

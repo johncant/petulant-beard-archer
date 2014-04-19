@@ -1,7 +1,6 @@
 #ifndef __VIEWER_IMAGE_VIEW_IMAGE_POINT_INDEX_MIXIN_IMPL_H__
 #define __VIEWER_IMAGE_VIEW_IMAGE_POINT_INDEX_MIXIN_IMPL H__
 
-#include <boost/phoenix.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <algorithm>
 #include "image_point_index_mixin.h"
@@ -15,12 +14,6 @@
 namespace GtkGui {
 namespace Viewer {
 namespace ImageView {
-
-namespace phx {
-  using namespace boost::phoenix::arg_names;
-  using namespace boost::phoenix::local_names;
-  using namespace boost::phoenix;
-}
 
 template <class base, typename user_data_t>
 typename ImagePointIndexMixin<base, user_data_t>::PointRef ImagePointIndexMixin<base, user_data_t>::add_point(Core::Point2D point, const user_data_t& user_data = user_data_t()) {

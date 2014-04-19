@@ -1,5 +1,6 @@
 #include "controller.h"
-#include "boost/phoenix.hpp"
+#include "boost/phoenix/core.hpp"
+#include "boost/phoenix/bind.hpp"
 #include "boost/algorithm/clamp.hpp"
 #include <algorithm>
 
