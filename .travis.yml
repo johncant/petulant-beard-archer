@@ -1,5 +1,5 @@
 install: pkg-config --list-all
-script: automake && autoreconf && ./configure && make check
+script: autoreconf && ./configure && make check
 language: cpp
 compiler:
   - gcc
