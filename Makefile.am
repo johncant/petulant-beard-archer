@@ -60,3 +60,6 @@ photogrammetry_SOURCES = \
 AM_CXXFLAGS = $(gl_CFLAGS) $(glew_CFLAGS) $(GTKMM_CFLAGS) $(opencv_CFLAGS) -fno-builtin-malloc -fno-builtin-free -g
 LIBS = $(gl_LIBS) $(glew_LIBS) $(GTKMM_LIBS) $(opencv_LIBS) -lX11 -g
 
+
+get-deps:
+	pkg-config --list-all
