@@ -1,0 +1,5 @@
+install: make get-deps
+script: ./configure && make check
+compiler:
+  - gcc
+
