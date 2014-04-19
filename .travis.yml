@@ -1,5 +1,5 @@
-install: make get-deps
-script: ./configure && make check
+install: pkg-config --list-all
+script: automake && autoconf && ./configure && make check
 language: cpp
 compiler:
   - gcc
