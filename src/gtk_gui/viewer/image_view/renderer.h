@@ -22,7 +22,7 @@ namespace GtkGui {
     namespace ImageView {
       class Renderer : public GtkGui::Viewer::Renderer {
 
-        private:
+        protected:
         boost::shared_ptr<Core::Image> image;
         boost::shared_ptr<cv::Mat> pixels;
         boost::shared_ptr<cv::Mat> sprite_pixels;

@@ -1,6 +1,7 @@
 #include "viewer_widget.h"
 #include "viewer/image_view/controller.h"
 #include "viewer/image_view/image_controller.h"
+#include "viewer/widget_controllable.h"
 #include <GL/gl.h>
 #include <GL/glx.h>
 #include <gdk/gdkx.h>
@@ -115,7 +116,7 @@ void GtkGui::ViewerWidget::on_realize2() {
 
   impl.realized = true;
   if (controller && glXMakeCurrent(display, id, impl.context) == TRUE) {
-    controller->realize(window);
+    controller->realize();
   }
 
 }
@@ -142,7 +143,7 @@ bool GtkGui::ViewerWidget::on_configure2(GdkEventConfigure* const&) {
     impl.configured = true;
     if (controller && glXMakeCurrent(display, id, impl.context) == TRUE) {
       gtk_widget_get_allocation(GTK_WIDGET(this->gobj()), &allocation);
-      controller->configure(allocation.width, allocation.height, window);
+      controller->configure(allocation.width, allocation.height);
     }
 
   }
@@ -171,7 +172,7 @@ bool GtkGui::ViewerWidget::on_expose1() {
 
     impl.exposed = true;
     if (controller && glXMakeCurrent(display, id, impl.context) == TRUE) {
-      controller->draw(window);
+      controller->draw();
       glXSwapBuffers(display, id);
     }
   }
@@ -180,17 +181,13 @@ bool GtkGui::ViewerWidget::on_expose1() {
 
 
 void GtkGui::ViewerWidget::show_image(boost::shared_ptr<Core::Image> im) {
-  typedef GtkGui::Viewer::ImageView::Controller Controller;
+  typedef GtkGui::Viewer::WidgetControllable WidgetControllable;
+  typedef GtkGui::Viewer::ImageView::Controller<WidgetControllable> Controller;
   typedef Controller::ImageController ImageController;
 
-  controller = boost::shared_ptr<Controller>(
-    new Controller(
-      *this,
-      boost::shared_ptr<ImageController>(
-        new ImageController(im)
-      )
-    )
-  );
+  boost::shared_ptr<WidgetControllable> wc(new WidgetControllable(*this));
+  boost::shared_ptr<ImageController> ic(new ImageController(im));
+  controller = boost::shared_ptr<Controller>(new Controller(wc, ic));
 
   // Wait until we're told to set up a context.
   if (!impl.realized) return;
@@ -202,18 +199,18 @@ void GtkGui::ViewerWidget::show_image(boost::shared_ptr<Core::Image> im) {
   if (glXMakeCurrent(display, id, impl.context) == TRUE) {
 
     // Bring controller up to date with our current state
-    controller->realize(window);
+    controller->realize();
 
     if (impl.configured) {
       int width, height;
       GtkAllocation allocation;
 
       gtk_widget_get_allocation(GTK_WIDGET(this->gobj()), &allocation);
-      controller->configure(allocation.width, allocation.height, window);
+      controller->configure(allocation.width, allocation.height);
     }
 
     if (impl.exposed) {
-      controller->draw(window);
+      controller->draw();
       glXSwapBuffers(display, id);
     }
   }

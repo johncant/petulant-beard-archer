@@ -24,8 +24,9 @@ namespace GtkGui {
 //        void add_point();
 //      };
 
+      template <class widget_controllable_t, class renderer_t = GtkGui::Viewer::ImageView::Renderer>
       class Controller : public Viewer::Controller {
-
+        boost::shared_ptr<widget_controllable_t> widget_controllable;
         public:
 
         typedef GtkGui::Viewer::ImageView::ImageController<
@@ -38,25 +39,24 @@ namespace GtkGui {
         boost::shared_ptr<ImageController> image_controller;
         double zoom_level;
         Core::Point2D zoom_center;
-        GdkCursor *cursor_crosshair;
 
         protected:
-        boost::shared_ptr<GtkGui::Viewer::ImageView::Renderer> renderer;
+        boost::shared_ptr<renderer_t> renderer;
         std::vector<sigc::connection> signal_connections;
 
-        void connect_signal_handlers(Gtk::Widget &parent);
+        void connect_signal_handlers();
         void disconnect_signal_handlers();
 
         public:
         Controller(
-          Gtk::Widget &parent,
+          boost::shared_ptr<widget_controllable_t> controllable,
           boost::shared_ptr<ImageController> im
         );
         ~Controller();
 
-        void draw(GdkWindow *window);
-        void configure(unsigned int width, unsigned int height, GdkWindow *window);
-        void realize(GdkWindow *window);
+        void draw();
+        void configure(unsigned int width, unsigned int height);
+        void realize();
         double get_zoom();
         bool on_motion_notify_event(GdkEventMotion* evt);
         bool on_enter_notify_event(GdkEventCrossing* evt);
@@ -69,5 +69,9 @@ namespace GtkGui {
     }
   }
 }
+
+#define __INSIDE_GTK_GUI_VIEWER_IMAGE_VIEW_CONTROLLER_H__
+#include "controller_impl.h"
+#undef __INSIDE_GTK_GUI_VIEWER_IMAGE_VIEW_CONTROLLER_H__
 
 #endif

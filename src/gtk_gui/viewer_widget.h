@@ -11,9 +11,11 @@
 #include "viewer/controller.h"
 #include <boost/shared_ptr.hpp>
 #include "../core/image.h"
+#include <gdk/gdkcursor.h>
 
 namespace GtkGui {
   class ViewerWidgetImpl;
+  class ViewerWidget;
 
   class ViewerWidget : public Gtk::DrawingArea {
 

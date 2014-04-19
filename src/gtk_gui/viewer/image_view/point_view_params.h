@@ -5,9 +5,11 @@ namespace GtkGui {
   namespace Viewer {
     namespace ImageView {
 
+      template <class controllable_t, class renderer_t>
       class Controller;
 
       class PointViewParams {
+        template <class controllable_t, class renderer_t>
         friend class ::GtkGui::Viewer::ImageView::Controller;
 
         enum FeatureType {

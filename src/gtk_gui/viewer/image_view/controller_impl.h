@@ -3,26 +3,25 @@
 #include "boost/algorithm/clamp.hpp"
 #include <algorithm>
 
+#ifndef __INSIDE_GTK_GUI_VIEWER_IMAGE_VIEW_CONTROLLER_H__
+  #error "This file should never be included directly"
+#else
+
 //#include "boost/phoenix/stl/algorithm.hpp"
 //#include "boost/phoenix/bind.hpp"
 
 using boost::algorithm::clamp;
-namespace phx {
-  using namespace boost::phoenix;
-  using namespace boost::phoenix::arg_names;
-}
-using namespace Core;
 
 namespace GtkGui { namespace Viewer { namespace ImageView {
 
 // Helper
 template <class event>
-static Point2D point_from_event(event* e) {
+static Core::Point2D point_from_event(event* e) {
   gint w, h;
 
   gdk_window_get_geometry(e->window, NULL, NULL, &w, &h, NULL);
 
-  return Point2D(double(e->x)/double(w), double(e->y)/double(h));
+  return Core::Point2D(double(e->x)/double(w), double(e->y)/double(h));
 }
 
 
@@ -36,87 +35,102 @@ static Point2D point_from_event(event* e) {
 
 
 
-Controller::Controller(Gtk::Widget& parent, boost::shared_ptr<ImageController> imc) :
+template <class controllable_t, class renderer_t>
+Controller<controllable_t, renderer_t>::Controller(
+  boost::shared_ptr<controllable_t> controllable,
+  boost::shared_ptr<ImageController> imc
+) :
   image_controller(imc),
-  renderer(new Renderer(imc->image)),
+  renderer(new renderer_t(imc->image)),
   zoom_level(0),
   zoom_center(0.5, 0.5),
-  highlighted_point(*imc)
+  highlighted_point(*imc),
+  widget_controllable(controllable)
 {
-  connect_signal_handlers(parent);
-  cursor_crosshair = gdk_cursor_new(GDK_CROSSHAIR);
+  connect_signal_handlers();
 }
 
-void Controller::connect_signal_handlers(Gtk::Widget &parent) {
+template <class controllable_t, class renderer_t>
+void Controller<controllable_t, renderer_t>::
+  connect_signal_handlers() {
 
   signal_connections.push_back(
-    parent.signal_button_press_event().connect(
+    widget_controllable->signal_button_press_event().connect(
       sigc::mem_fun(
         *this,
-        &GtkGui::Viewer::ImageView::Controller::on_button_press_event
+        &GtkGui::Viewer::ImageView::Controller<controllable_t, renderer_t>::on_button_press_event
       )
     )
   );
 
   signal_connections.push_back(
-    parent.signal_motion_notify_event().connect(
+    widget_controllable->signal_motion_notify_event().connect(
       sigc::mem_fun(
         *this,
-        &GtkGui::Viewer::ImageView::Controller::on_motion_notify_event
+        &GtkGui::Viewer::ImageView::Controller<controllable_t, renderer_t>::on_motion_notify_event
       )
     )
   );
 
   signal_connections.push_back(
-    parent.signal_scroll_event().connect(
+    widget_controllable->signal_scroll_event().connect(
       sigc::mem_fun(
         *this,
-        &GtkGui::Viewer::ImageView::Controller::on_scroll
+        &GtkGui::Viewer::ImageView::Controller<controllable_t, renderer_t>::on_scroll
       )
     )
   );
 
 }
 
-void Controller::disconnect_signal_handlers() {
+template <class controllable_t, class renderer_t>
+void Controller<controllable_t, renderer_t>::disconnect_signal_handlers() {
+  using boost::phoenix::bind;
+  using boost::phoenix::arg_names::_1;
 
   std::for_each(
     signal_connections.begin(),
     signal_connections.end(),
-    phx::bind(&sigc::connection::disconnect, phx::_1)
+    bind(&sigc::connection::disconnect, _1)
   );
 
 }
 
-Controller::~Controller() {
+template <class controllable_t, class renderer_t>
+Controller<controllable_t, renderer_t>::~Controller() {
   disconnect_signal_handlers();
 }
 
 // Accessors
 
-double Controller::get_zoom() {
+template <class controllable_t, class renderer_t>
+double Controller<controllable_t, renderer_t>::get_zoom() {
   // TODO - CONFIG
   return exp(zoom_level*log(20.0));
 }
 
 // Events that come from Viewer
-void Controller::realize(GdkWindow* window) {
+template <class controllable_t, class renderer_t>
+void Controller<controllable_t, renderer_t>::realize() {
+  widget_controllable->set_cursor(controllable_t::CROSSHAIR);
   renderer->realize();
-  gdk_window_set_cursor(window, cursor_crosshair);
 }
 
-void Controller::configure(unsigned int width, unsigned int height, GdkWindow *window) {
+template <class controllable_t, class renderer_t>
+void Controller<controllable_t, renderer_t>::configure(unsigned int width, unsigned int height) {
   renderer->configure(width, height);
 }
 
-void Controller::draw(GdkWindow *window) {
+template <class controllable_t, class renderer_t>
+void Controller<controllable_t, renderer_t>::draw() {
   renderer->draw(image_controller->get_points_values());
 }
 
 // Interaction events
-bool Controller::on_button_press_event(GdkEventButton* evt) {
+template <class controllable_t, class renderer_t>
+bool Controller<controllable_t, renderer_t>::on_button_press_event(GdkEventButton* evt) {
 
-  Point2D pos = point_from_event(evt);
+  Core::Point2D pos = point_from_event(evt);
 
   if (evt->button == 1 && (evt->state & GDK_SHIFT_MASK)) {
     // TODO - box select and include selected points
@@ -134,7 +148,8 @@ bool Controller::on_button_press_event(GdkEventButton* evt) {
 //  widget->signal_button_release_event()
 }
 
-bool Controller::on_motion_notify_event(GdkEventMotion* evt) {
+template <class controllable_t, class renderer_t>
+bool Controller<controllable_t, renderer_t>::on_motion_notify_event(GdkEventMotion* evt) {
   Core::Point2D vp_mouse_pos = point_from_event(evt);
 
   // TODO - Zoom center should be decided in here - render should be more dumb
@@ -161,7 +176,8 @@ bool Controller::on_motion_notify_event(GdkEventMotion* evt) {
   gdk_window_invalidate_rect(evt->window, NULL, true);
 }
 
-bool Controller::on_scroll(GdkEventScroll* evt) {
+template <class controllable_t, class renderer_t>
+bool Controller<controllable_t, renderer_t>::on_scroll(GdkEventScroll* evt) {
   // TODO - CONFIG
   double increment = 0.1;
 
@@ -170,9 +186,9 @@ bool Controller::on_scroll(GdkEventScroll* evt) {
   }
 
   if (evt->direction == GDK_SCROLL_UP) {
-    zoom_level = clamp(zoom_level+increment, 0.0, 1.0);
+    zoom_level = boost::algorithm::clamp(zoom_level+increment, 0.0, 1.0);
   } else {
-    zoom_level = clamp(zoom_level-increment, 0.0, 1.0);
+    zoom_level = boost::algorithm::clamp(zoom_level-increment, 0.0, 1.0);
   }
 
   renderer->set_zoom(get_zoom());
@@ -183,3 +199,5 @@ bool Controller::on_scroll(GdkEventScroll* evt) {
 }
 
 }}}
+
+#endif
