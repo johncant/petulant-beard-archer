@@ -1,4 +1,4 @@
-install: pkg-config --list-all && sudo apt-get -y -q install libboost-all-dev libopencv-dev
+install: pkg-config --list-all && sudo apt-get -y -q install autotools-dev libboost-all-dev libopencv-dev
 script: autoreconf && ./configure && make check
 language: cpp
 compiler:
