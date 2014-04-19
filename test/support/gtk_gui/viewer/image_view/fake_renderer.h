@@ -9,7 +9,7 @@ namespace GtkGui {
       class FakeRenderer : public GtkGui::Viewer::ImageView::Renderer {
         public:
         FakeRenderer(boost::shared_ptr<Core::Image> im);
-        void draw(std::vector<boost::tuple<Core::Point2D, GtkGui::Viewer::ImageView::PointViewParams> > const & points);
+        void draw(std::vector<boost::tuple<Core::Point2D, GtkGui::Viewer::ImageView::PointViewParams, unsigned int> > const & points);
         void configure(unsigned int width, unsigned int height);
         void realize();
       };

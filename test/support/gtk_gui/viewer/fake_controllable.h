@@ -16,6 +16,11 @@ namespace GtkGui {
 
       void set_cursor(const CursorType &ct);
 
+      unsigned int get_width() const;
+      unsigned int get_height() const;
+
+      void trigger_redraw();
+
       sigc::signal<bool, GdkEventCrossing*> m_signal_enter_notify_event;
       sigc::signal<bool, GdkEventMotion*> m_signal_motion_notify_event;
       sigc::signal<bool, GdkEventButton*> m_signal_button_press_event;

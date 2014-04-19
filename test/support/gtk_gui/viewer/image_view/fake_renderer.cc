@@ -27,7 +27,7 @@ void FakeRenderer::configure(unsigned int width, unsigned int height) {
   vp_height = double(height);
 }
 
-void FakeRenderer::draw(std::vector<boost::tuple<Core::Point2D, PointViewParams> > const & points) {
+void FakeRenderer::draw(std::vector<boost::tuple<Core::Point2D, PointViewParams, unsigned int> > const & points) {
   std::cout << "Draw event overridden" << std::endl;
 }
 

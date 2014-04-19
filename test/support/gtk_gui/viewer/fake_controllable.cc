@@ -2,6 +2,18 @@
 
 namespace GtkGui { namespace Viewer {
 
+unsigned int FakeControllable::get_width() const {
+  return 200;
+}
+
+unsigned int FakeControllable::get_height() const {
+  return 200;
+}
+
+void trigger_redraw() {
+  // No need to do anything here :)
+}
+
 void FakeControllable::set_cursor(const CursorType &ct) {
   // No need to do anything here :)
 }

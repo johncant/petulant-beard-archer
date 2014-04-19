@@ -36,6 +36,7 @@ namespace GtkGui {
 
         protected:
         PointRef highlighted_point;
+        PointRef drag_point;
         boost::shared_ptr<ImageController> image_controller;
         double zoom_level;
         Core::Point2D zoom_center;
@@ -63,6 +64,7 @@ namespace GtkGui {
         bool on_leave_notify_event(GdkEventCrossing* evt);
         bool on_scroll(GdkEventScroll* evt);
         bool on_button_press_event(GdkEventButton* evt);
+        bool on_button_release_event(GdkEventButton* evt);
 
       };
 

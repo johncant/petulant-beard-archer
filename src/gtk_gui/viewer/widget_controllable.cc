@@ -8,6 +8,22 @@ namespace GtkGui { namespace Viewer {
 WidgetControllable::WidgetControllable(ViewerWidget& w) : widget(w) {
 }
 
+unsigned int WidgetControllable::get_width() const {
+  gint w;
+  gdk_window_get_geometry(gtk_widget_get_window(GTK_WIDGET(widget.gobj())), NULL, NULL, &w, NULL, NULL);
+  return w;
+}
+
+unsigned int WidgetControllable::get_height() const {
+  gint h;
+  gdk_window_get_geometry(gtk_widget_get_window(GTK_WIDGET(widget.gobj())), NULL, NULL, NULL, &h, NULL);
+  return h;
+}
+
+void WidgetControllable::trigger_redraw() {
+  gdk_window_invalidate_rect(gtk_widget_get_window(GTK_WIDGET(widget.gobj())), NULL, true);
+}
+
 void WidgetControllable::set_cursor(const CursorType &ct) {
   GdkCursor *cursor;
   GdkWindow *window;

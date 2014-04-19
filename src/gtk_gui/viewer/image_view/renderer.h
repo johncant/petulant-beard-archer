@@ -22,6 +22,7 @@ namespace GtkGui {
     namespace ImageView {
       class Renderer : public GtkGui::Viewer::Renderer {
 
+        typedef boost::tuple<Core::Point2D, GtkGui::Viewer::ImageView::PointViewParams, unsigned int> tuple_pt_ud;
         protected:
         boost::shared_ptr<Core::Image> image;
         boost::shared_ptr<cv::Mat> pixels;
@@ -51,11 +52,11 @@ namespace GtkGui {
           get_image_to_viewport_transform();
 
         void draw_image();
-        void draw_points(std::vector<boost::tuple<Core::Point2D, PointViewParams> > const & points);
+        void draw_points(std::vector<tuple_pt_ud> const & points);
         public:
         Renderer(boost::shared_ptr<Core::Image> im);
         ~Renderer();
-        void draw(std::vector<boost::tuple<Core::Point2D, GtkGui::Viewer::ImageView::PointViewParams> > const & points);
+        void draw(std::vector<tuple_pt_ud> const & points);
         void configure(unsigned int width, unsigned int height);
         void realize();
         void set_zoom(double zoom);

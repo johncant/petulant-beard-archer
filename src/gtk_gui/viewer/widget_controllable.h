@@ -22,6 +22,11 @@ namespace GtkGui {
         CROSSHAIR = GDK_CROSSHAIR
       };
 
+      unsigned int get_width() const;
+      unsigned int get_height() const;
+
+      void trigger_redraw();
+
       void set_cursor(const CursorType &ct);
       Glib::SignalProxy1<bool, GdkEventCrossing*> signal_enter_notify_event();
       Glib::SignalProxy1<bool, GdkEventCrossing*> signal_leave_notify_event();

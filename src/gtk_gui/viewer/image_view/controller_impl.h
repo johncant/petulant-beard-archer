@@ -15,11 +15,12 @@ using boost::algorithm::clamp;
 namespace GtkGui { namespace Viewer { namespace ImageView {
 
 // Helper
-template <class event>
-static Core::Point2D point_from_event(event* e) {
-  gint w, h;
+template <class controllable_t, class event>
+static Core::Point2D point_from_event(const controllable_t& c, event* e) {
+  unsigned int w, h;
 
-  gdk_window_get_geometry(e->window, NULL, NULL, &w, &h, NULL);
+  w = c->get_width();
+  h = c->get_height();
 
   return Core::Point2D(double(e->x)/double(w), double(e->y)/double(h));
 }
@@ -45,6 +46,7 @@ Controller<controllable_t, renderer_t>::Controller(
   zoom_level(0),
   zoom_center(0.5, 0.5),
   highlighted_point(*imc),
+  drag_point(*imc),
   widget_controllable(controllable)
 {
   connect_signal_handlers();
@@ -59,6 +61,15 @@ void Controller<controllable_t, renderer_t>::
       sigc::mem_fun(
         *this,
         &GtkGui::Viewer::ImageView::Controller<controllable_t, renderer_t>::on_button_press_event
+      )
+    )
+  );
+
+  signal_connections.push_back(
+    widget_controllable->signal_button_release_event().connect(
+      sigc::mem_fun(
+        *this,
+        &GtkGui::Viewer::ImageView::Controller<controllable_t, renderer_t>::on_button_release_event
       )
     )
   );
@@ -130,7 +141,7 @@ void Controller<controllable_t, renderer_t>::draw() {
 template <class controllable_t, class renderer_t>
 bool Controller<controllable_t, renderer_t>::on_button_press_event(GdkEventButton* evt) {
 
-  Core::Point2D pos = point_from_event(evt);
+  Core::Point2D pos = point_from_event(widget_controllable, evt);
 
   if (evt->button == 1 && (evt->state & GDK_SHIFT_MASK)) {
     // TODO - box select and include selected points
@@ -138,19 +149,35 @@ bool Controller<controllable_t, renderer_t>::on_button_press_event(GdkEventButto
     // TODO - select or deselect individual other points
   } else if (evt->button == 1) {
     // TODO - Select 1 point or create point
+
+    drag_point = image_controller->
+    get_point_under_cursor(
+      pos,
+      renderer->get_reverse_marker_bounds(pos)
+    );
+
+  }
+
+}
+
+template <class controllable_t, class renderer_t>
+bool Controller<controllable_t, renderer_t>::on_button_release_event(GdkEventButton* evt) {
+
+  Core::Point2D pos = point_from_event(widget_controllable, evt);
+
+  if (drag_point) {
+    drag_point.unassign();
+  } else {
     image_controller->add_point(renderer->as_image_coords(pos));
     std::cout << "point added" << std::endl;
   }
 
   gdk_window_invalidate_rect(evt->window, NULL, true);
-
-//  Glib::RefPtr<Gtk::widget> widget = Glib::wrap(evt->window->get_user_data());
-//  widget->signal_button_release_event()
 }
 
 template <class controllable_t, class renderer_t>
 bool Controller<controllable_t, renderer_t>::on_motion_notify_event(GdkEventMotion* evt) {
-  Core::Point2D vp_mouse_pos = point_from_event(evt);
+  Core::Point2D vp_mouse_pos = point_from_event(widget_controllable, evt);
 
   // TODO - Zoom center should be decided in here - render should be more dumb
   renderer->set_zoom_center(vp_mouse_pos);
@@ -172,6 +199,13 @@ bool Controller<controllable_t, renderer_t>::on_motion_notify_event(GdkEventMoti
     highlighted_point.params().m_is_highlighted = true;
   }
 
+  // Handle point dragging
+  if (drag_point) {
+    Core::Point2D im_mouse_pos = renderer->as_image_coords(vp_mouse_pos);
+
+    drag_point.move(im_mouse_pos);
+  }
+
   // Redraw
   gdk_window_invalidate_rect(evt->window, NULL, true);
 }
@@ -182,7 +216,7 @@ bool Controller<controllable_t, renderer_t>::on_scroll(GdkEventScroll* evt) {
   double increment = 0.1;
 
   if (zoom_level <= 0.5*increment) {
-    zoom_center = point_from_event(evt);
+    zoom_center = point_from_event(widget_controllable, evt);
   }
 
   if (evt->direction == GDK_SCROLL_UP) {

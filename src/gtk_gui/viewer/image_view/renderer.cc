@@ -272,7 +272,7 @@ void Renderer::configure(unsigned int width, unsigned int height) {
 
 }
 
-void Renderer::draw(std::vector<boost::tuple<Core::Point2D, PointViewParams> > const & points) {
+void Renderer::draw(std::vector<tuple_pt_ud> const & points) {
   // Background
   GL_CHECK(glClearColor(0, 0, 0, 1));
   GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
@@ -362,7 +362,7 @@ void Renderer::draw_image() {
 
 }
 
-void Renderer::draw_points(const std::vector<boost::tuple<Core::Point2D, PointViewParams> >& points) {
+void Renderer::draw_points(const std::vector<tuple_pt_ud>& points) {
   GLuint vbo[2], vao[2];
 
   GL_CHECK(glUseProgram(shader_program));

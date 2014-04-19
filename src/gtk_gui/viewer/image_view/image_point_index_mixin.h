@@ -52,6 +52,10 @@ namespace GtkGui {
           }
         }
 
+        void unassign() {
+          id = -1;
+        }
+
         PointReference(mixin_t& c) :
           controller(&c), id(-1) {}
 
@@ -74,6 +78,10 @@ namespace GtkGui {
 
           return controller->get_point(*this).template get<1>();
         }
+
+        void move(const Core::Point2D &pt) {
+          controller->move_point(*this, pt);
+        }
       };
 
       template <class mixin_base, typename user_data_t>
@@ -82,7 +90,7 @@ namespace GtkGui {
 
         public:
         typedef PointReference<ImagePointIndexMixin> PointRef;
-        typedef boost::tuple<Core::Point2D, user_data_t> tuple_pt_ud;
+        typedef boost::tuple<Core::Point2D, user_data_t, unsigned int> tuple_pt_ud;
 
         private:
         // Index by some ID we assign
@@ -103,6 +111,7 @@ namespace GtkGui {
         void remove_point(PointRef point_id);
         tuple_pt_ud& get_point(const PointRef& p);
         const tuple_pt_ud& get_point(const PointRef& p) const;
+        void move_point(const PointRef &pt, const Core::Point2D& new_pt);
         template <typename bounding_geometry_t>
         PointRef get_point_under_cursor(const Core::Point2D& cursor, const bounding_geometry_t &geometry);
 

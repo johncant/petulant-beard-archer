@@ -30,7 +30,17 @@ typename ImagePointIndexMixin<base, user_data_t>::PointRef ImagePointIndexMixin<
   this->image->points.push_back(point);
 
   // Add to indices
-  points.insert(std::make_pair(max_index, boost::make_tuple(point, user_data)));
+  points.insert(
+    std::make_pair(
+      max_index,
+      boost::make_tuple(
+        point,
+        user_data,
+        this->image->points.size()-1
+      )
+    )
+  );
+
   rtree.insert(ref);
 
   return ref;
@@ -80,12 +90,12 @@ void ImagePointIndexMixin<base, user_data_t>::remove_point(ImagePointIndexMixin<
 }
 
 template <class base, typename user_data_t>
-boost::tuple<Core::Point2D, user_data_t>& ImagePointIndexMixin<base, user_data_t>::get_point(const ImagePointIndexMixin<base, user_data_t>::PointRef& p) {
+typename ImagePointIndexMixin<base, user_data_t>::tuple_pt_ud& ImagePointIndexMixin<base, user_data_t>::get_point(const ImagePointIndexMixin<base, user_data_t>::PointRef& p) {
   return points.at(p.id);
 }
 
 template <class base, typename user_data_t>
-const boost::tuple<Core::Point2D, user_data_t>& ImagePointIndexMixin<base, user_data_t>::get_point(const ImagePointIndexMixin<base, user_data_t>::PointRef& p) const {
+const typename ImagePointIndexMixin<base, user_data_t>::tuple_pt_ud& ImagePointIndexMixin<base, user_data_t>::get_point(const ImagePointIndexMixin<base, user_data_t>::PointRef& p) const {
   return points.at(p.id);
 }
 
@@ -97,11 +107,35 @@ ImagePointIndexMixin<mixin_base, user_data_t>::ImagePointIndexMixin(boost::share
 
   for (int i=0; i<=max_index ; i++) {
     const PointRef ref(*this, i);
-    points.insert(std::make_pair(i, boost::make_tuple(image->points[i], user_data_t())));
+    points.insert(
+      std::make_pair(
+        i,
+        boost::make_tuple(
+          image->points[i],
+          user_data_t(),
+          i
+        )
+      )
+    );
     rtree.insert(ref);
   }
 
   std::cout << image->points.size() << " points inserted on initialization" << std::endl;
+}
+
+template <class mixin_base, typename user_data_t>
+void ImagePointIndexMixin<mixin_base, user_data_t>::move_point(const PointRef& pt, const Core::Point2D& new_point) {
+
+  tuple_pt_ud& pt_data = get_point(pt);
+
+  // Add to model
+  this->image->points[pt_data.template get<2>()] = new_point;
+  this->points.at(pt.id).template get<0>() = new_point;
+
+  // Change indices
+  rtree.remove(pt);
+  rtree.insert(pt);
+
 }
 
 template <class mixin_base, typename user_data_t>
