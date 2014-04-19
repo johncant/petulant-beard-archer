@@ -1,4 +1,4 @@
-install: pkg-config --list-all && sudo apt-get -y -q install libglew-dev libboost-all-dev libopencv-dev && wget https://launchpad.net/~dns/+archive/gnu/+build/3647209/+files/autoconf_2.69-1gnu1~12.04_all.deb && sudo dpkg -i autoconf_2.69-1gnu1~12.04_all.deb
+install: pkg-config --list-all && sudo apt-get -y -q install libgtkmm-2.4-dev libglew-dev libboost-all-dev libopencv-dev && wget https://launchpad.net/~dns/+archive/gnu/+build/3647209/+files/autoconf_2.69-1gnu1~12.04_all.deb && sudo dpkg -i autoconf_2.69-1gnu1~12.04_all.deb
 script: autoreconf && ./configure && make check
 language: cpp
 compiler:
