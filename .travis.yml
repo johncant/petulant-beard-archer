@@ -16,6 +16,7 @@ install: pkg-config --list-all
   - #sudo sh -c 'echo "/usr/local/lib" >> /etc/ld.so.conf.d/local.conf' 
   - #sudo ldconfig 
   - #cd ../
+  - #bump
 script: autoreconf && ./configure && make check
 language: cpp
 compiler:
