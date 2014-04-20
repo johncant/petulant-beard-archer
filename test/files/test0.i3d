@@ -1,0 +1,14 @@
+insight3d data file
+vertices 2
+0 0 0 0 0
+0 0 0 0 0
+polygons 0
+shots 2
+0 0 0 0 0 550 /path/to/image0.jpg 2 image_name0.jpg 0 0 0 1000 0 0 0 0 0 0 0 0 0 0 0 0 
+points 3
+0.446988 0.645791 0
+0.446988 0.645791 1
+0.25 0.6 2
+0 0 0 0 0 544 /path/to/image1.jpg 2 image_name1.jpg 0 0 0 992 0 0 0 0 0 0 0 0 0 0 0 0 
+points 0
+checksum 185

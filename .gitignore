@@ -13,5 +13,6 @@ photogrammetry
 src/.deps
 src/.dirstamp
 src/.libs
+.dirstamp
 *.o
 stamp-h1

@@ -2,18 +2,22 @@
 #define __GTK_GUI_VIEWER_H__
 
 #include <gtkmm/drawingarea.h>
+#include <gtkmm/builder.h>
 #include <gtk/gtk.h>
-#include <stdlib.h>
-#include <GL/gl.h>
-#include <GL/glx.h>
-#include <boost/shared_ptr.hpp>
 
-#include <gdk/gdkx.h>
+//#include <stdlib.h>
 #include "gtk_gui.h"
-#include "renderer.h"
+#include "viewer/renderer.h"
+#include "viewer/controller.h"
+#include <boost/shared_ptr.hpp>
+#include "../core/image.h"
+#include <gdk/gdkcursor.h>
 
 namespace GtkGui {
-  class Viewer : public Gtk::DrawingArea {
+  class ViewerWidgetImpl;
+  class ViewerWidget;
+
+  class ViewerWidget : public Gtk::DrawingArea {
 
     // This class doesn't use GtkGlExt or GtkGlarea since they don't support GTK+-3.0.
     // Leaks memory like your grandmother.
@@ -22,9 +26,9 @@ namespace GtkGui {
 
     public:
 
-    ~Viewer();
-    Viewer(GtkDrawingArea *gobj, Glib::RefPtr<Gtk::Builder> builder);
-    Viewer();
+    ~ViewerWidget();
+    ViewerWidget(GtkDrawingArea *gobj, Glib::RefPtr<Gtk::Builder> builder);
+    ViewerWidget();
 
     void on_realize2();
     bool on_configure2(GdkEventConfigure* const&);
@@ -32,12 +36,12 @@ namespace GtkGui {
     bool on_expose_gtk2(GdkEventExpose* evt);
     bool on_expose1();
 
+    void show_image(boost::shared_ptr<Core::Image> im);
+
     private:
-    GLXContext context;
-    Colormap xcolormap;
-    XVisualInfo *xvisual;
-    GdkVisual *visual;
-    boost::shared_ptr<GtkGui::Renderer> renderer;
+    void initialize();
+    GtkGui::ViewerWidgetImpl& impl;
+    boost::shared_ptr<GtkGui::Viewer::Controller> controller;
   };
 }
 

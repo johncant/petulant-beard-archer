@@ -1,12 +1,15 @@
-#include "image_view_renderer.h"
+#include "blank_renderer.h"
 
 #include <GL/gl.h>
 
-GtkGui::ImageViewRenderer::ImageViewRenderer(boost::shared_ptr<Core::Image> im) : Renderer(), image(im) { }
+namespace GtkGui { namespace Viewer {
 
-GtkGui::ImageViewRenderer::~ImageViewRenderer() {}
 
-void GtkGui::ImageViewRenderer::realize() {
+BlankRenderer::BlankRenderer() { }
+
+BlankRenderer::~BlankRenderer() {}
+
+void BlankRenderer::realize() {
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LEQUAL);
   glEnable(GL_CULL_FACE);
@@ -15,11 +18,11 @@ void GtkGui::ImageViewRenderer::realize() {
   glShadeModel(GL_SMOOTH);
 }
 
-void GtkGui::ImageViewRenderer::configure(unsigned int width, unsigned int height) {
+void BlankRenderer::configure(unsigned int width, unsigned int height) {
   glViewport(0, 0, width, height);
 }
 
-void GtkGui::ImageViewRenderer::draw() {
+void BlankRenderer::draw() {
   glClear(GL_DEPTH_BUFFER_BIT);
 
   glMatrixMode(GL_PROJECTION);
@@ -29,7 +32,7 @@ void GtkGui::ImageViewRenderer::draw() {
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
 
-  glClearColor(0, 1, 0, 1);
+  glClearColor(1, 0, 0, 1);
   glClear(GL_COLOR_BUFFER_BIT);
   glColor3f(1, 1, 1);
 
@@ -40,3 +43,5 @@ void GtkGui::ImageViewRenderer::draw() {
   glEnd();
 }
 
+
+}}

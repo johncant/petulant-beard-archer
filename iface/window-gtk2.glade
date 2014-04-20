@@ -246,12 +246,17 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkIconView" id="iconview1">
+                  <object class="GtkScrolledWindow" id="scrolledwindow3">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
-                    <property name="margin">6</property>
-                    <property name="model">liststore1</property>
-                    <property name="row_spacing">4</property>
+                    <property name="shadow_type">in</property>
+                    <child>
+                      <object class="GtkIconView" id="iconview_image_chooser">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="margin">0</property>
+                      </object>
+                    </child>
                   </object>
                   <packing>
                     <property name="expand">True</property>
