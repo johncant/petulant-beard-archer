@@ -15,7 +15,7 @@ install:
   - sudo sh -c 'echo "/usr/local/lib" >> /etc/ld.so.conf.d/local.conf'
   - sudo ldconfig
   - cd ../
-script: autoreconf && ./configure && make check
+script: ./autogen.sh && ./configure && make check
 language: cpp
 compiler:
   - gcc
