@@ -10,6 +10,8 @@
 #include "../../../core/image.h"
 #include "../../../core/point2d.h"
 #include "point_view_params.h"
+#include "selection.h"
+
 
 namespace GtkGui {
   namespace Viewer {
@@ -26,22 +28,28 @@ namespace GtkGui {
 
       template <class widget_controllable_t, class renderer_t = GtkGui::Viewer::ImageView::Renderer>
       class Controller : public Viewer::Controller {
-        boost::shared_ptr<widget_controllable_t> widget_controllable;
         public:
 
         typedef GtkGui::Viewer::ImageView::ImageController<
           PointViewParams
         > ImageController;
         typedef ImageController::PointRef PointRef;
+        typedef GtkGui::Viewer::ImageView::Selection<PointRef> Selection;
 
+        private:
+        boost::shared_ptr<widget_controllable_t> widget_controllable;
         protected:
         PointRef highlighted_point;
         PointRef drag_point;
+        double drag_offset_x, drag_offset_y; // viewport coords
+        bool allow_point_creation_on_release;
+
         boost::shared_ptr<ImageController> image_controller;
         double zoom_level;
         Core::Point2D zoom_center;
 
         protected:
+        Selection selection;
         boost::shared_ptr<renderer_t> renderer;
         std::vector<sigc::connection> signal_connections;
 
@@ -59,6 +67,7 @@ namespace GtkGui {
         void configure(unsigned int width, unsigned int height);
         void realize();
         double get_zoom();
+        Selection get_selection();
         bool on_motion_notify_event(GdkEventMotion* evt);
         bool on_enter_notify_event(GdkEventCrossing* evt);
         bool on_leave_notify_event(GdkEventCrossing* evt);

@@ -76,6 +76,18 @@
     emit(&evt);\
 }
 
+#define shift_left_down(xi, yi) {\
+  GdkEventButton evt;\
+  evt.type = GDK_BUTTON_PRESS;\
+  evt.time = 1000;\
+  evt.x = xi;\
+  evt.y = yi;\
+  evt.state = GDK_SHIFT_MASK;\
+  evt.button = 1;\
+  controllable->signal_button_press_event().\
+    emit(&evt);\
+}
+
 #define left_up(xi, yi) {\
   GdkEventButton evt;\
   evt.type = GDK_BUTTON_RELEASE;\

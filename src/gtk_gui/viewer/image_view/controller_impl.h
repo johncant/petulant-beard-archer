@@ -30,7 +30,6 @@ static Core::Point2D point_from_event(const controllable_t& c, event* e) {
 
 
 
-
 // Impl
 
 // *structors
@@ -121,6 +120,12 @@ double Controller<controllable_t, renderer_t>::get_zoom() {
   return exp(zoom_level*log(20.0));
 }
 
+template <class controllable_t, class renderer_t>
+typename Controller<controllable_t, renderer_t>::Selection
+Controller<controllable_t, renderer_t>::get_selection() {
+  return selection;
+}
+
 // Events that come from Viewer
 template <class controllable_t, class renderer_t>
 void Controller<controllable_t, renderer_t>::realize() {
@@ -142,12 +147,29 @@ void Controller<controllable_t, renderer_t>::draw() {
 template <class controllable_t, class renderer_t>
 bool Controller<controllable_t, renderer_t>::on_button_press_event(GdkEventButton* evt) {
 
-  Core::Point2D pos = point_from_event(widget_controllable, evt);
+  using boost::phoenix::bind;
+  using boost::phoenix::arg_names::_1;
 
-  if (evt->button == 1 && (evt->state & GDK_SHIFT_MASK)) {
-    // TODO - box select and include selected points
-  } else if (evt->button == 1 && (evt->state & GDK_CONTROL_MASK)) {
-    // TODO - select or deselect individual other points
+  Core::Point2D pos = point_from_event(widget_controllable, evt);
+  allow_point_creation_on_release = false;
+
+  // Image coords
+  Core::Point2D im_mouse_pos = renderer->as_image_coords(pos);
+
+  if (evt->button == 1 && (evt->state & GDK_SHIFT_MASK || evt->state & GDK_CONTROL_MASK)) {
+
+    PointRef select_point = image_controller->
+    get_point_under_cursor(
+      pos,
+      renderer->get_reverse_marker_bounds(pos)
+    );
+
+    if (select_point) {
+      select_point.params().m_is_selected = true;
+
+      selection += select_point;
+    }
+
   } else if (evt->button == 1) {
     // TODO - Select 1 point or create point
 
@@ -156,6 +178,37 @@ bool Controller<controllable_t, renderer_t>::on_button_press_event(GdkEventButto
       pos,
       renderer->get_reverse_marker_bounds(pos)
     );
+//bind(&PointViewParams::m_is_selected, val(
+////
+//    std::for_each(
+//      selection.begin(),
+//      selection.end(),
+//      bind(static_cast< & (PointRef::*) () const >&PointRef::params, _1)
+//    );
+
+    if (drag_point) {
+      Core::Point2D vp_drag_point(
+        renderer->as_viewport_coords(
+          Core::Point2D(
+            drag_point->x,
+            drag_point->y
+          )
+        )
+      );
+
+      drag_offset_x = vp_drag_point.x - pos.x;
+      drag_offset_y = vp_drag_point.y - pos.y;
+
+      for (Selection::iterator it = selection.begin(); it!= selection.end(); it++) {
+        it->params().m_is_selected = false;
+      }
+
+      drag_point.params().m_is_selected = true;
+      selection = drag_point;
+
+    } else {
+      allow_point_creation_on_release = true;
+    }
 
   }
 
@@ -168,7 +221,7 @@ bool Controller<controllable_t, renderer_t>::on_button_release_event(GdkEventBut
 
   if (drag_point) {
     drag_point.unassign();
-  } else {
+  } else if (allow_point_creation_on_release) {
     image_controller->add_point(renderer->as_image_coords(pos));
     std::cout << "point added" << std::endl;
   }
@@ -182,6 +235,9 @@ bool Controller<controllable_t, renderer_t>::on_motion_notify_event(GdkEventMoti
 
   // TODO - Zoom center should be decided in here - render should be more dumb
   renderer->set_zoom_center(vp_mouse_pos);
+
+  // Image coords
+  Core::Point2D im_mouse_pos = renderer->as_image_coords(vp_mouse_pos);
 
   // Change highlight
 
@@ -202,9 +258,11 @@ bool Controller<controllable_t, renderer_t>::on_motion_notify_event(GdkEventMoti
 
   // Handle point dragging
   if (drag_point) {
-    Core::Point2D im_mouse_pos = renderer->as_image_coords(vp_mouse_pos);
-
-    drag_point.move(im_mouse_pos);
+    Core::Point2D new_drag_point(
+      vp_mouse_pos.x + drag_offset_x,
+      vp_mouse_pos.y + drag_offset_y
+    );
+    drag_point.move(renderer->as_image_coords(new_drag_point));
   }
 
   widget_controllable->trigger_redraw();

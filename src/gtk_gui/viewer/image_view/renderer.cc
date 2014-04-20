@@ -35,6 +35,7 @@ const std::string vertex_shader_source = ""
 "in vec2 corners;\n"
 "in vec2 texture_uv;\n"
 "in float vertex_highlight;\n"
+"in float vertex_selectedness;\n"
 "\n"
 "mat4 ortho = mat4( 2.0,  0.0, 0.0,  0.0,\n"
 "                   0.0, -2.0, 0.0,  0.0,\n"
@@ -42,12 +43,14 @@ const std::string vertex_shader_source = ""
 "                  -1.0,  1.0, 0.0,  1.0);\n"
 "varying vec2 uv;\n"
 "varying float highlight;\n"
+"varying float selectedness;\n"
 "\n"
 "\n"
 "void main() {\n"
 "  gl_Position = ortho*vec4(corners[0], corners[1], 0.0, 1.0);\n"
 "  uv = texture_uv;\n"
 "  highlight = vertex_highlight;\n"
+"  selectedness = vertex_selectedness;\n"
 "//  gl_PointSize = 5;\n"
 "//  gl_ClipDistance[0] = 10.0;\n"
 "//  gl_ClipDistance[1] = 10.0;\n"
@@ -64,6 +67,7 @@ static const std::string fragment_shader_source = ""
 "\n"
 "varying vec2 uv;\n"
 "varying float highlight;\n"
+"varying float selectedness;\n"
 "\n"
 "uniform sampler2D image;\n"
 "uniform float zoom;\n"
@@ -83,7 +87,13 @@ static const std::string fragment_shader_source = ""
 "    vec4 tex_col = texture2D(image, distorted_uv);\n"
 "    vec4 flip_col = vec4(1.0, 1.0, 1.0, 0.0);\n"
 "    vec4 scale_col = vec4(1.0-highlight, 1.0-highlight, 1.0-highlight, 1.0);\n"
-"    image_col = flip_col-(flip_col-tex_col)*scale_col; // TODO - don't touch the alpha\n"
+"    vec4 select_tex_col = vec4(\n"
+"           tex_col[0]*(1.0-selectedness)+tex_col[2]*selectedness,\n"
+"           tex_col[1],\n"
+"           tex_col[2]*(1.0-selectedness)+tex_col[0]*selectedness,\n"
+"           tex_col[3]\n"
+"    );\n"
+"    image_col = flip_col-(flip_col-select_tex_col)*scale_col; // TODO - don't touch the alpha\n"
 "  }\n"
 "//  gl_FragColor = 0.5*image_col+0.5*zoom_heat;\n"
 "    gl_FragColor = image_col;\n"
@@ -146,6 +156,7 @@ void Renderer::init_shaders() {
   GL_CHECK(glBindAttribLocation(shader_program, 0, "corners"));
   GL_CHECK(glBindAttribLocation(shader_program, 1, "texture_uv"));
   GL_CHECK(glBindAttribLocation(shader_program, 2, "vertex_highlight"));
+  GL_CHECK(glBindAttribLocation(shader_program, 3, "vertex_selectedness"));
 
   GL_CHECK(glLinkProgram(shader_program));
 
@@ -285,7 +296,7 @@ void Renderer::draw(std::vector<tuple_pt_ud> const & points) {
 }
 
 void Renderer::draw_image() {
-  GLuint vbo[2], vao[2];
+  GLuint vbo[4], vao[4];
 
   GL_CHECK(glUseProgram(shader_program));
 
@@ -311,8 +322,17 @@ void Renderer::draw_image() {
     1.0, 0.0
   };
 
+  const float highlights[] = {
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  };
+
+  const float *selectednesses = highlights;
+
   // Generate buffers
-  GL_CHECK(glGenBuffers(2, vbo));
+  GL_CHECK(glGenBuffers(4, vbo));
   GL_CHECK(glGenVertexArrays(2, vao));
 
   // Set vertex position data
@@ -337,6 +357,20 @@ void Renderer::draw_image() {
   GL_CHECK(glBindTexture(GL_TEXTURE_2D, gl_tex_id));
   GL_CHECK(glEnable(GL_TEXTURE_2D));
   GL_CHECK(glUniform1iARB(img_loc, 0));
+
+  // Set vertex highlight
+  GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, vbo[2]));
+  GL_CHECK(glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(GLfloat), highlights, GL_STATIC_DRAW));
+
+  GL_CHECK(glEnableVertexAttribArray(2));
+  GL_CHECK(glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 0, 0));
+
+  // Set vertex selectednesses
+  GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, vbo[3]));
+  GL_CHECK(glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(GLfloat), selectednesses, GL_STATIC_DRAW));
+
+  GL_CHECK(glEnableVertexAttribArray(3));
+  GL_CHECK(glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, 0, 0));
 
   // Zoom params
   GLint zoom_loc, zoom_center_loc, sigma_di_loc;
@@ -363,13 +397,14 @@ void Renderer::draw_image() {
 }
 
 void Renderer::draw_points(const std::vector<tuple_pt_ud>& points) {
-  GLuint vbo[2], vao[2];
+  GLuint vbo[4], vao[4];
 
   GL_CHECK(glUseProgram(shader_program));
 
   float positions[8*points.size()];
   float tex_coords[8*points.size()];
   float highlights[4*points.size()];
+  float selectednesses[4*points.size()];
 
   double sprite_hw =
     double(sprite_pixels->cols)/(2.0*vp_width);
@@ -404,16 +439,18 @@ void Renderer::draw_points(const std::vector<tuple_pt_ud>& points) {
     tex_coords[8*i+7] = 0.0;
 
     float hl = (points[i].get<1>().is_highlighted()) ? 0.5 : 0.0;
+    float sl = (points[i].get<1>().is_selected()) ? 1.0 : 0.0;
 
     for(int j=0;j<4;j++) {
       highlights[4*i+j] = hl;
+      selectednesses[4*i+j] = sl;
     }
 
   }
 
   // Generate buffers
-  GL_CHECK(glGenBuffers(3, vbo));
-  GL_CHECK(glGenVertexArrays(3, vao));
+  GL_CHECK(glGenBuffers(4, vbo));
+  GL_CHECK(glGenVertexArrays(2, vao));
 
   // Set vertex position data
   GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, vbo[0]));
@@ -436,6 +473,13 @@ void Renderer::draw_points(const std::vector<tuple_pt_ud>& points) {
 
   GL_CHECK(glEnableVertexAttribArray(2));
   GL_CHECK(glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 0, 0));
+
+  // Set vertex selectednesses
+  GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, vbo[3]));
+  GL_CHECK(glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(GLfloat)*points.size(), selectednesses, GL_STATIC_DRAW));
+
+  GL_CHECK(glEnableVertexAttribArray(3));
+  GL_CHECK(glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, 0, 0));
 
   // Texture
   GLint pt_img_loc;
@@ -508,13 +552,22 @@ Point2D Renderer::as_image_coords(Point2D pt) {
   // Fwd distortion transform defined as
   // Position in image part of viewport -> position on actual image
   //
-  // Our question is, for a point on the image display space, 
+  // Our question is, for a point on the image display space,
+  // where does it lie in the image
   return TF::combine(
     get_image_to_viewport_transform().inverse(),
     get_distortion_transform()
   ).t(pt);
-
 }
+
+Point2D Renderer::as_viewport_coords(Point2D pt) {
+  // For a point on the image, where does it lie in the viewport
+  return TF::combine(
+    get_distortion_transform().inverse(),
+    get_image_to_viewport_transform()
+  ).t(pt);
+}
+
 /*
 boost::geometry::model::box<
   boost::geometry::model::point<
@@ -528,10 +581,13 @@ boost::geometry::model::polygon<
 >
 Renderer::get_reverse_marker_bounds(const Core::Point2D &point) {
 
+  // assume that pt is in viewport coordinates.
+  // output in image coordinates
+
   typedef boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> pt_t;
 
   double rx = sqrt(2)*double(sprite_pixels->cols)*0.5/vp_width;
-  double ry = sqrt(2)*double(sprite_pixels->rows)*0.5/vp_width;
+  double ry = sqrt(2)*double(sprite_pixels->rows)*0.5/vp_height;
 
   boost::geometry::model::polygon<pt_t> result;
 

@@ -62,6 +62,7 @@ namespace GtkGui {
         void set_zoom(double zoom);
         void set_zoom_center(Core::Point2D zoom_center);
         Core::Point2D as_image_coords(Core::Point2D pt);
+        Core::Point2D as_viewport_coords(Core::Point2D pt);
 
         boost::geometry::model::polygon<
           boost::geometry::model::point<

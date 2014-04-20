@@ -74,8 +74,7 @@ namespace GtkGui {
           }
         }
 
-        PointViewParams& params() {
-
+        PointViewParams& params() const {
           return controller->get_point(*this).template get<1>();
         }
 
@@ -83,6 +82,11 @@ namespace GtkGui {
           controller->move_point(*this, pt);
         }
       };
+
+      template <class mixin_t>
+      std::size_t hash_value(const PointReference<mixin_t> &pt) {
+        return pt.id;
+      }
 
       template <class mixin_base, typename user_data_t>
       class ImagePointIndexMixin : public mixin_base {

@@ -2,11 +2,15 @@ AUTOMAKE_OPTIONS = subdir-objects
 
 TESTS = insight3d_test \
 				gtk_gui_viewer_image_view_controller_create_point_test \
-			  gtk_gui_viewer_image_view_controller_drag_point_test
+			  gtk_gui_viewer_image_view_controller_drag_point_test \
+		    gtk_gui_viewer_image_view_controller_select_point_test \
+				gtk_gui_viewer_image_view_controller_select_another_point_test
 
 check_PROGRAMS = insight3d_test\
 		  gtk_gui_viewer_image_view_controller_create_point_test \
-			gtk_gui_viewer_image_view_controller_drag_point_test
+			gtk_gui_viewer_image_view_controller_drag_point_test \
+		  gtk_gui_viewer_image_view_controller_select_point_test \
+		  gtk_gui_viewer_image_view_controller_select_another_point_test
 
 
 insight3d_test_SOURCES = \
@@ -14,11 +18,11 @@ insight3d_test_SOURCES = \
 							 src/importers/base.cc \
 							 src/importers/insight3d.cc
 
-#gtk_gui_viewer_image_view_countroller_test_sources = \
-#							 src/gtk_gui/viewer/controller.cc\
-#							 src/gtk_gui/viewer/renderer.cc\
-#							 src/gtk_gui/viewer/image_view/renderer.cc \
-#							 test/support/gtk_gui/viewer/fake_controllable.cc\
+# Required to test controller.cc
+#							 src/gtk_gui/viewer/controller.cc
+#							 src/gtk_gui/viewer/renderer.cc
+#							 src/gtk_gui/viewer/image_view/renderer.cc
+#							 test/support/gtk_gui/viewer/fake_controllable.cc
 #							 test/support/gtk_gui/viewer/image_view/fake_renderer.cc
 
 gtk_gui_viewer_image_view_controller_create_point_test_SOURCES = \
@@ -36,6 +40,22 @@ gtk_gui_viewer_image_view_controller_drag_point_test_SOURCES = \
 							 test/support/gtk_gui/viewer/fake_controllable.cc\
 							 test/support/gtk_gui/viewer/image_view/fake_renderer.cc\
 							 test/gtk_gui/viewer/image_view/controller_drag_point.cc
+
+gtk_gui_viewer_image_view_controller_select_point_test_SOURCES = \
+							 src/gtk_gui/viewer/controller.cc\
+							 src/gtk_gui/viewer/renderer.cc\
+							 src/gtk_gui/viewer/image_view/renderer.cc \
+							 test/support/gtk_gui/viewer/fake_controllable.cc\
+							 test/support/gtk_gui/viewer/image_view/fake_renderer.cc\
+							 test/gtk_gui/viewer/image_view/controller_select_point.cc
+
+gtk_gui_viewer_image_view_controller_select_another_point_test_SOURCES = \
+							 src/gtk_gui/viewer/controller.cc\
+							 src/gtk_gui/viewer/renderer.cc\
+							 src/gtk_gui/viewer/image_view/renderer.cc \
+							 test/support/gtk_gui/viewer/fake_controllable.cc\
+							 test/support/gtk_gui/viewer/image_view/fake_renderer.cc\
+							 test/gtk_gui/viewer/image_view/controller_select_another_point.cc
 
 
 bin_PROGRAMS = photogrammetry
