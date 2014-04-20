@@ -1,4 +1,5 @@
-install: pkg-config --list-all 
+install:
+  - pkg-config --list-all 
   - sudo add-apt-repository "deb http://us.archive.ubuntu.com/ubuntu/ precise universe multiverse" 
   - sudo apt-get update 
   - sudo apt-get -y -q install build-essential g++ boost1.55 python-dev autotools-dev libicu-dev libbz2-dev libgtkmm-2.4-dev libglew-dev libopencv-dev 
