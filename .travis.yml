@@ -3,15 +3,15 @@ install:
   - sudo add-apt-repository "deb http://us.archive.ubuntu.com/ubuntu/ precise universe multiverse"
   - sudo apt-get update
   - sudo apt-get -y -q install build-essential g++ python-dev autotools-dev libicu-dev libbz2-dev libgtkmm-2.4-dev libglew-dev libopencv-dev
-  - wget https://launchpad.net/~dns/+archive/gnu/+build/3647209/+files/autoconf_2.69-1gnu1~12.04_all.deb
+  - wget https://launchpad.net/~dns/+archive/gnu/+build/3647209/+files/autoconf_2.69-1gnu1~12.04_all.deb > /dev/null
   - sudo dpkg -i autoconf_2.69-1gnu1~12.04_all.deb
-  - wget -O boost_1_55_0.tar.gz http://sourceforge.net/projects/boost/files/boost/1.55.0/boost_1_55_0.tar.gz/download
-  - tar xzvf boost_1_55_0.tar.gz
+  - wget -O boost_1_55_0.tar.gz http://sourceforge.net/projects/boost/files/boost/1.55.0/boost_1_55_0.tar.gz/download > /dev/null
+  - tar xzvf boost_1_55_0.tar.gz > /dev/null
   - cd boost_1_55_0/
   - sudo apt-get update
   - sudo apt-get install build-essential g++ python-dev
-  - ./bootstrap.sh --prefix=/usr/local
-  - sudo ./b2 --with=all -j `sudo cat /proc/cpuinfo | grep "cpu cores" | uniq | awk '{print $NF}'` install
+  - ./bootstrap.sh --prefix=/usr/local &> boost-build-log0 || cat boost-build-log0
+  - sudo ./b2 --with=all -j `sudo cat /proc/cpuinfo | grep "cpu cores" | uniq | awk '{print $NF}'` install &> boost-build-log1 || sudo cat boost-build-log1
   - sudo sh -c 'echo "/usr/local/lib" >> /etc/ld.so.conf.d/local.conf'
   - sudo ldconfig
   - cd ../
