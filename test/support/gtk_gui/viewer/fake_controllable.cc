@@ -10,7 +10,7 @@ unsigned int FakeControllable::get_height() const {
   return 200;
 }
 
-void trigger_redraw() {
+void FakeControllable::trigger_redraw() {
   // No need to do anything here :)
 }
 
