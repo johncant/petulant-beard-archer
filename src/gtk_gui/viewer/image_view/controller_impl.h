@@ -173,7 +173,7 @@ bool Controller<controllable_t, renderer_t>::on_button_release_event(GdkEventBut
     std::cout << "point added" << std::endl;
   }
 
-  gdk_window_invalidate_rect(evt->window, NULL, true);
+  widget_controllable->trigger_redraw();
 }
 
 template <class controllable_t, class renderer_t>
@@ -207,8 +207,7 @@ bool Controller<controllable_t, renderer_t>::on_motion_notify_event(GdkEventMoti
     drag_point.move(im_mouse_pos);
   }
 
-  // Redraw
-  gdk_window_invalidate_rect(evt->window, NULL, true);
+  widget_controllable->trigger_redraw();
 }
 
 template <class controllable_t, class renderer_t>
@@ -229,7 +228,7 @@ bool Controller<controllable_t, renderer_t>::on_scroll(GdkEventScroll* evt) {
   renderer->set_zoom(get_zoom());
   renderer->set_zoom_center(zoom_center);
 
-  gdk_window_invalidate_rect(evt->window, NULL, true);
+  widget_controllable->trigger_redraw();
   return true;
 }
 
