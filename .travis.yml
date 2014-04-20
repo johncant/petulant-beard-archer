@@ -10,8 +10,6 @@ install:
   - cd boost_1_55_0/
   - sudo apt-get update
   - sudo apt-get install build-essential g++ python-dev
-  - libicu-dev
-  - libbz2-dev
   - ./bootstrap.sh --prefix=/usr/local
   - sudo ./b2 --with=all -j `sudo cat /proc/cpuinfo | grep "cpu cores" | uniq | awk '{print $NF}'` install
   - sudo sh -c 'echo "/usr/local/lib" >> /etc/ld.so.conf.d/local.conf'
