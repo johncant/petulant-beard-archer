@@ -27,7 +27,12 @@ void FakeRenderer::configure(unsigned int width, unsigned int height) {
   vp_height = double(height);
 }
 
-void FakeRenderer::draw(std::vector<boost::tuple<Core::Point2D, PointViewParams, unsigned int> > const & points) {
+void FakeRenderer::draw(
+  std::vector<boost::tuple<Core::Point2D, GtkGui::Viewer::ImageView::PointViewParams, unsigned int> > const & points,
+  bool allow_rectangle_select,
+  const Core::Point2D &rect_sel_pt0,
+  const Core::Point2D &rect_sel_pt1
+) {
   std::cout << "Draw event overridden" << std::endl;
 }
 

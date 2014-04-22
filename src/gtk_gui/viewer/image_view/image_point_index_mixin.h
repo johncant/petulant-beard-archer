@@ -118,6 +118,10 @@ namespace GtkGui {
         void move_point(const PointRef &pt, const Core::Point2D& new_pt);
         template <typename bounding_geometry_t>
         PointRef get_point_under_cursor(const Core::Point2D& cursor, const bounding_geometry_t &geometry);
+        std::vector<PointRef> get_points_in_rectangle(
+          const Core::Point2D &pt0,
+          const Core::Point2D &pt1
+        );
 
         ImagePointIndexMixin(boost::shared_ptr<Core::Image> const image);
       };

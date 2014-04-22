@@ -3,6 +3,7 @@
 #include "boost/phoenix/bind.hpp"
 #include "boost/algorithm/clamp.hpp"
 #include <algorithm>
+#include <math.h>
 
 #ifndef __INSIDE_GTK_GUI_VIEWER_IMAGE_VIEW_CONTROLLER_H__
   #error "This file should never be included directly"
@@ -47,7 +48,11 @@ Controller<controllable_t, renderer_t>::Controller(
   zoom_center(0.5, 0.5),
   highlighted_point(*imc),
   drag_point(*imc),
-  widget_controllable(controllable)
+  widget_controllable(controllable),
+  rectangle_start(0.0, 0.0),
+  rectangle_end(0.0, 0.0),
+  allow_rectangle_select(false),
+  allow_point_creation_on_release(false)
 {
   connect_signal_handlers();
 }
@@ -140,7 +145,7 @@ void Controller<controllable_t, renderer_t>::configure(unsigned int width, unsig
 
 template <class controllable_t, class renderer_t>
 void Controller<controllable_t, renderer_t>::draw() {
-  renderer->draw(image_controller->get_points_values());
+  renderer->draw(image_controller->get_points_values(), allow_rectangle_select, rectangle_start, rectangle_end);
 }
 
 // Interaction events
@@ -152,6 +157,7 @@ bool Controller<controllable_t, renderer_t>::on_button_press_event(GdkEventButto
 
   Core::Point2D pos = point_from_event(widget_controllable, evt);
   allow_point_creation_on_release = false;
+  allow_rectangle_select = false;
 
   // Image coords
   Core::Point2D im_mouse_pos = renderer->as_image_coords(pos);
@@ -207,7 +213,11 @@ bool Controller<controllable_t, renderer_t>::on_button_press_event(GdkEventButto
       selection = drag_point;
 
     } else {
+      allow_rectangle_select = true;
       allow_point_creation_on_release = true;
+      rectangle_start = im_mouse_pos;
+      std::cout << "Starting rectangle select" << std::endl;
+      rectangle_end = im_mouse_pos;
     }
 
   }
@@ -218,10 +228,34 @@ template <class controllable_t, class renderer_t>
 bool Controller<controllable_t, renderer_t>::on_button_release_event(GdkEventButton* evt) {
 
   Core::Point2D pos = point_from_event(widget_controllable, evt);
+  Core::Point2D im_mouse_pos = renderer->as_image_coords(pos);
 
   if (drag_point) {
     drag_point.unassign();
-  } else if (allow_point_creation_on_release) {
+  }
+
+  if (allow_rectangle_select) {
+    if (
+      fabs(rectangle_start.x - im_mouse_pos.x) > 1e-4 &&
+      fabs(rectangle_start.y - im_mouse_pos.y) > 1e-4
+    ) {
+      std::cout << "Finish rectangle select" << std::endl;
+      for (
+        Selection::iterator it = selection.begin();
+        it != selection.end();
+        it++
+      ) {
+        if (rectangle_selection.count(*it) == 0) {
+          it->params().m_is_selected = false;
+        }
+      }
+      selection = rectangle_selection;
+    }
+    allow_rectangle_select = false;
+  }
+
+  if (allow_point_creation_on_release) {
+    allow_point_creation_on_release = false;
     image_controller->add_point(renderer->as_image_coords(pos));
     std::cout << "point added" << std::endl;
   }
@@ -233,6 +267,7 @@ template <class controllable_t, class renderer_t>
 bool Controller<controllable_t, renderer_t>::on_motion_notify_event(GdkEventMotion* evt) {
   Core::Point2D vp_mouse_pos = point_from_event(widget_controllable, evt);
 
+  allow_point_creation_on_release = false;
   // TODO - Zoom center should be decided in here - render should be more dumb
   renderer->set_zoom_center(vp_mouse_pos);
 
@@ -263,6 +298,45 @@ bool Controller<controllable_t, renderer_t>::on_motion_notify_event(GdkEventMoti
       vp_mouse_pos.y + drag_offset_y
     );
     drag_point.move(renderer->as_image_coords(new_drag_point));
+    allow_point_creation_on_release = false;
+    allow_rectangle_select = false;
+  } else if (allow_rectangle_select) {
+    // Handle rectangle select
+    rectangle_end = im_mouse_pos;
+
+    std::cout << "Move during rectangle select" << std::endl;
+    for (
+      Selection::iterator it = rectangle_selection.begin();
+      it != rectangle_selection.end();
+      it++
+    ) {
+      if (selection.count(*it) == 0) {
+        // This point is not selected. Make it look unselected.
+        it->params().m_is_selected = false;
+      }
+    }
+
+    std::vector<PointRef> selected_points =
+      image_controller->get_points_in_rectangle(
+        rectangle_start,
+        rectangle_end
+      );
+
+    rectangle_selection.clear();
+    rectangle_selection.insert(
+      selected_points.begin(),
+      selected_points.end()
+    );
+
+    for (
+      Selection::iterator it = rectangle_selection.begin();
+      it != rectangle_selection.end();
+      it++
+    ) {
+      // Make it look selected.
+      it->params().m_is_selected = true;
+    }
+
   }
 
   widget_controllable->trigger_redraw();

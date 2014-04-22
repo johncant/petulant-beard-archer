@@ -2,6 +2,8 @@
 #define __VIEWER_IMAGE_VIEW_IMAGE_POINT_INDEX_MIXIN_IMPL H__
 
 #include <boost/tuple/tuple.hpp>
+#include <boost/geometry/multi/geometries/multi_point.hpp>
+#include <boost/geometry/algorithms/envelope.hpp>
 #include <algorithm>
 #include "image_point_index_mixin.h"
 
@@ -155,6 +157,37 @@ get_point_under_cursor(const Core::Point2D& cursor, const bounding_geometry_t& b
   } else {
     return PointRef(*this);
   }
+}
+
+template <class mixin_base, typename user_data_t>
+std::vector<typename ImagePointIndexMixin<mixin_base, user_data_t>::PointRef>
+ImagePointIndexMixin<mixin_base, user_data_t>::
+get_points_in_rectangle(
+  const Core::Point2D &pt0,
+  const Core::Point2D &pt1
+) {
+
+  typedef boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> pt_t;
+  typedef boost::geometry::model::box<pt_t> box_t;
+  typedef boost::geometry::model::multi_point<pt_t> multi_pt_t;
+
+  pt_t b_pt0(pt0.x, pt0.y), b_pt1(pt1.x, pt1.y);
+  multi_pt_t points;
+
+  points.push_back(b_pt0);
+  points.push_back(b_pt1);
+
+  box_t bounds = boost::geometry::return_envelope<box_t>(points);
+
+  std::vector<PointRef> result;
+
+  rtree.query(
+    boost::geometry::index::within(bounds),
+    std::back_inserter(result)
+  );
+
+  return result;
+
 }
 
 }}}

@@ -73,15 +73,44 @@ static const std::string fragment_shader_source = ""
 "uniform float zoom;\n"
 "uniform vec2 zoom_center;\n"
 "uniform vec2 sigma_diag_inverse;\n"
+"struct SelectRect {\n"
+"  float x0;\n"
+"  float y0;\n"
+"  float x1;\n"
+"  float y1;\n"
+"};\n"
+"uniform vec4 rect_coords;\n"
+"uniform float allow_rect_display;\n"
 "\n"
 "void main() {\n"
 "  vec2 normalized_x = (zoom_center-uv)*sigma_diag_inverse;\n"
 "  float local_zoom = 1.0+(zoom-1.0)*exp(-0.5*dot(normalized_x, normalized_x));\n"
 "  vec2 distorted_uv = zoom_center + (uv - zoom_center)/local_zoom;\n"
 "  vec4 image_col;\n"
+"\n"
+"  float sfx, sfy;\n"
+"  float sftx, sfty;\n"
+"  if (allow_rect_display > 0.5) {\n"
+"    sfx = (distorted_uv[0]-rect_coords[0])/(rect_coords[2]-rect_coords[0]);\n"
+"    sfy = (distorted_uv[1]-rect_coords[1])/(rect_coords[3]-rect_coords[1]);\n"
+"    sftx = (0.01/sigma_diag_inverse[0])/abs(rect_coords[2]-rect_coords[0])/local_zoom;\n"
+"    sfty = (0.01/sigma_diag_inverse[1])/abs(rect_coords[3]-rect_coords[1])/local_zoom;\n"
+"  }\n"
+"\n"
 "  if (distorted_uv[0] < 0.0 || distorted_uv[1] < 0.0 || distorted_uv[0] > 1.0 || distorted_uv[1] > 1.0) {\n"
 "    image_col = vec4(0.0, 0.0, 0.0, 1.0);\n"
-"  } else if (abs(length(normalized_x) - 0.5) <= 0.01) {\n"
+"//  } else if (allow_rect_display > 0.5 && rect_coords[0] > 0.5) {\n"
+"//    image_col = vec4(1.0, 1.0, 0.0, 1.0);\n"
+"  } else if (allow_rect_display > 0.5 && ((\n"
+"    (( abs(sfx-sftx) <= sftx || abs(sfx-1.0+sftx) <= sftx )\n"
+" && ( sfy >= 0.0 && sfy <= 1.0 ) )\n"
+" || (( abs(sfy-sfty) <= sfty || abs(sfy-1.0+sfty) <= sfty )\n"
+" && ( sfx >= 0.0 && sfx <= 1.0 )\n"
+"  )))) {\n"
+"    image_col = vec4(0.0, 0.0, 1.0, 0.5);\n"
+"  }\n"
+"    else if (abs(length(normalized_x) - 0.5) <= 0.01) {\n"
+"    // Zoom distortion movement circle\n"
 "    image_col = vec4(0.0, 1.0, 1.0, 0.5);"
 "  } else {\n"
 "    vec4 tex_col = texture2D(image, distorted_uv);\n"
@@ -283,19 +312,32 @@ void Renderer::configure(unsigned int width, unsigned int height) {
 
 }
 
-void Renderer::draw(std::vector<tuple_pt_ud> const & points) {
+void Renderer::draw(
+  std::vector<tuple_pt_ud> const & points,
+  bool allow_rectangle_select,
+  const Core::Point2D &rectangle_start,
+  const Core::Point2D &rectangle_end
+) {
   // Background
   GL_CHECK(glClearColor(0, 0, 0, 1));
   GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
   GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));
 
 //  if (vp_height > 0.5 && vp_width > 0.5) {
-    draw_image();
+    draw_image(
+      allow_rectangle_select,
+      rectangle_start,
+      rectangle_end
+    );
     draw_points(points);
 //  }
 }
 
-void Renderer::draw_image() {
+void Renderer::draw_image(
+  bool allow_rectangle_select,
+  const Core::Point2D &rectangle_start,
+  const Core::Point2D &rectangle_end
+) {
   GLuint vbo[4], vao[4];
 
   GL_CHECK(glUseProgram(shader_program));
@@ -390,6 +432,29 @@ void Renderer::draw_image() {
   GL_CHECK(glUniform1fARB(zoom_loc, im_zoom));
   GL_CHECK(glUniform2fARB(zoom_center_loc, im_zoom_center[0], im_zoom_center[1]));
   GL_CHECK(glUniform2fARB(sigma_di_loc, sigma_di[0], sigma_di[1]));
+
+  // Rectangle select
+  GLint allow_rect_display_loc, rect_coords_loc;
+  GLfloat allow_rect_display = allow_rectangle_select ? 1.0 : 0.0;
+  GLfloat rect_coords[4];
+
+  rect_coords[0] = rectangle_start.x;
+  rect_coords[1] = rectangle_start.y;
+  rect_coords[2] = rectangle_end.x;
+  rect_coords[3] = rectangle_end.y;
+
+  std::cout << allow_rectangle_select
+     << " " << rect_coords[0]
+     << " " << rect_coords[1]
+     << " " << rect_coords[2]
+     << " " << rect_coords[3]
+            << std::endl;
+
+  GL_CHECK(allow_rect_display_loc = glGetUniformLocation(shader_program, "allow_rect_display"));
+  GL_CHECK(rect_coords_loc = glGetUniformLocation(shader_program, "rect_coords"));
+
+  GL_CHECK(glUniform1fARB(allow_rect_display_loc, allow_rect_display));
+  GL_CHECK(glUniform4fARB(rect_coords_loc, rect_coords[0], rect_coords[1], rect_coords[2], rect_coords[3]));
 
   // Image
   GL_CHECK(glDrawArrays(GL_QUADS, 0, 4));

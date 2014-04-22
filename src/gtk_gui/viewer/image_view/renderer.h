@@ -51,12 +51,21 @@ namespace GtkGui {
         GtkGui::Viewer::ImageView::Transforms::ImageToViewport
           get_image_to_viewport_transform();
 
-        void draw_image();
+        void draw_image(
+          bool allow_rectangle_select,
+          const Core::Point2D &rect_sel_pt0,
+          const Core::Point2D &rect_sel_pt1
+        );
         void draw_points(std::vector<tuple_pt_ud> const & points);
         public:
         Renderer(boost::shared_ptr<Core::Image> im);
         ~Renderer();
-        void draw(std::vector<tuple_pt_ud> const & points);
+        void draw(
+          std::vector<tuple_pt_ud> const & points,
+          bool allow_rectangle_select,
+          const Core::Point2D &rect_sel_pt0,
+          const Core::Point2D &rect_sel_pt1
+        );
         void configure(unsigned int width, unsigned int height);
         void realize();
         void set_zoom(double zoom);
