@@ -1,13 +1,30 @@
 petulant-beard-archer
 =====================
 
-Construct 3d meshes from a series of images using 3d constraints
+Real name yet to be decided
 
 Based heavily on http://insight3d.sourceforge.net/
 
-### insight3d
+Construct 3d meshes from a series of images using 3d constraints
 
-Advantages:
+Features WIP so far
+-------------------
+
+*   GUI in Gtk (Gtkmm), using Glade and imported with Gtk::Builder
+*   Insight3d parser
+    built using boost::spirit
+    Expects no polygons
+*   2d image point editor. The image gets locally zoomed around the cursor, so the user never needs to pan. The ROI is always at the chosen zoom, and you never have to pan the picture. This means that the left and right mouse buttons are free for actual editing.
+
+Features ready so far
+---------------------
+
+*   none yet really :)
+
+Motivation for rewriting insight3d rather than extending it
+-----------------------------------------------------------
+
+Advantages of insight3d:
 
 - Very usable GUI
 - Open source
@@ -16,7 +33,7 @@ Advantages:
 - Readable file format
 - Works
 
-Disadvantages:
+Disadvantages of insight3d:
 
 - Uses OpenCV legacy highgui
 - Lots of pointers leads to a few bugs and crashes
@@ -32,10 +49,19 @@ Some features I'd like:
 - Probabilistic calibration
 - Lots of abstraction and TMP
 
-### Constrained triangulation algorithm
+Constrained triangulation algorithm
+-----------------------------------
 
-We'll find out after this is built, but I think I figured out how to triangulate with certain linear constraints.
+We'll find out after this is built, but I think I figured out how to triangulate with certain linear constraints. This will hopefully be in v1 :)
 
-### Contributing
+#### Other algorithmic goals
+
+*   Use constraints to find projection matrices more accurately
+*   Allow more complicated constraints
+*   Fuzzy reconstruction
+*   Infer textures and material properties from images of the lit object
+
+Contributing
+------------
 
 Send me a pull request :)
