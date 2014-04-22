@@ -39,10 +39,15 @@ namespace GtkGui {
         private:
         boost::shared_ptr<widget_controllable_t> widget_controllable;
         protected:
+        // Mouse movement state
         PointRef highlighted_point;
         PointRef drag_point;
         double drag_offset_x, drag_offset_y; // viewport coords
         bool allow_point_creation_on_release;
+        Core::Point2D rectangle_start;
+        Core::Point2D rectangle_end;
+        bool allow_rectangle_select;
+        Selection rectangle_selection;
 
         boost::shared_ptr<ImageController> image_controller;
         double zoom_level;
