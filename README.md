@@ -15,6 +15,7 @@ Features WIP so far
     built using boost::spirit
     Expects no polygons
 *   2d image point editor. The image gets locally zoomed around the cursor, so the user never needs to pan. The ROI is always at the chosen zoom, and you never have to pan the picture. This means that the left and right mouse buttons are free for actual editing.
+*   Correspondence editor. This is required to refine correspondences detected by automatic methods.
 
 Features ready so far
 ---------------------

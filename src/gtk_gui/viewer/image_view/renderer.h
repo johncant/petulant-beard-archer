@@ -22,6 +22,8 @@ namespace GtkGui {
     namespace ImageView {
       class Renderer : public GtkGui::Viewer::Renderer {
 
+        // should be private
+        public:
         typedef boost::tuple<Core::Point2D, GtkGui::Viewer::ImageView::PointViewParams, unsigned int> tuple_pt_ud;
         protected:
         boost::shared_ptr<Core::Image> image;

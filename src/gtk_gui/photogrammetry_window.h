@@ -16,6 +16,10 @@ namespace GtkGui {
     protected:
 
     Glib::RefPtr<GtkGui::ViewerWidget> viewer;
+    void show_correspondence(
+      boost::shared_ptr<Core::Image> im1,
+      boost::shared_ptr<Core::Image> im2
+    );
     void show_image(boost::shared_ptr<Core::Image> im);
     public:
 

@@ -80,6 +80,7 @@ photogrammetry_SOURCES = \
 												 src/gtk_gui/viewer/controller.cc \
 												 src/gtk_gui/viewer/renderer.cc \
 												 src/gtk_gui/viewer/image_view/renderer.cc \
+												 src/gtk_gui/viewer/correspondence_view/renderer.cc \
 												 src/gtk_gui/viewer/blank_renderer.cc \
 												 src/importers/base.cc \
 												 src/importers/insight3d.cc

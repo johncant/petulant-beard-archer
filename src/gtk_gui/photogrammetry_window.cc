@@ -47,8 +47,18 @@ GtkGui::PhotogrammetryWindow::PhotogrammetryWindow(GtkWindow *gobj, Glib::RefPtr
 }
 
 void GtkGui::PhotogrammetryWindow::show_image(shared_ptr<Core::Image> im) {
-  viewer->show_image(im);
+  // Quick hack for testing
+  viewer->show_correspondence(im, im);
+//  viewer->show_image(im);
 }
+
+void GtkGui::PhotogrammetryWindow::show_correspondence(
+  shared_ptr<Core::Image> im1,
+  shared_ptr<Core::Image> im2
+) {
+  viewer->show_correspondence(im1, im2);
+}
+
 
 RefPtr<GtkGui::ViewerWidget> GtkGui::PhotogrammetryWindow::get_viewer_widget() {
   return viewer;

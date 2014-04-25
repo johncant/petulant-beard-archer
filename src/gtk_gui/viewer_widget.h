@@ -37,7 +37,10 @@ namespace GtkGui {
     bool on_expose1();
 
     void show_image(boost::shared_ptr<Core::Image> im);
-
+    void show_correspondence(
+      boost::shared_ptr<Core::Image> im1,
+      boost::shared_ptr<Core::Image> im2
+    );
     private:
     void initialize();
     GtkGui::ViewerWidgetImpl& impl;

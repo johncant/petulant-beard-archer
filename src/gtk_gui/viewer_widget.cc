@@ -1,6 +1,7 @@
 #include "viewer_widget.h"
 #include "viewer/image_view/controller.h"
 #include "viewer/image_view/image_controller.h"
+#include "viewer/correspondence_view/controller.h"
 #include "viewer/widget_controllable.h"
 #include <GL/gl.h>
 #include <GL/glx.h>
@@ -179,6 +180,44 @@ bool GtkGui::ViewerWidget::on_expose1() {
 
 }
 
+// TODO
+void GtkGui::ViewerWidget::show_correspondence(
+  boost::shared_ptr<Core::Image> im1,
+  boost::shared_ptr<Core::Image> im2
+) {
+  typedef GtkGui::Viewer::WidgetControllable WidgetControllable;
+  typedef GtkGui::Viewer::CorrespondenceView::Controller<WidgetControllable> Controller;
+
+  boost::shared_ptr<WidgetControllable> wc(new WidgetControllable(*this));
+  controller = boost::shared_ptr<Controller>(new Controller(wc));
+
+  // Wait until we're told to set up a context.
+  if (!impl.realized) return;
+
+  GdkWindow *window = gtk_widget_get_window(GTK_WIDGET(this->gobj()));
+  Display *display = gdk_x11_display_get_xdisplay(gdk_window_get_display(window));
+  int id = gdk_x11_window_get_xid(window);
+
+  if (glXMakeCurrent(display, id, impl.context) == TRUE) {
+
+    // Bring controller up to date with our current state
+    controller->realize();
+
+    if (impl.configured) {
+      int width, height;
+      GtkAllocation allocation;
+
+      gtk_widget_get_allocation(GTK_WIDGET(this->gobj()), &allocation);
+      controller->configure(allocation.width, allocation.height);
+    }
+
+    if (impl.exposed) {
+      controller->draw();
+      glXSwapBuffers(display, id);
+    }
+  }
+
+}
 
 void GtkGui::ViewerWidget::show_image(boost::shared_ptr<Core::Image> im) {
   typedef GtkGui::Viewer::WidgetControllable WidgetControllable;
